@@ -303,103 +303,91 @@
 </script>
 
 <section class="trainer" class:focus-mode={focusMode}>
-  <header class="trainer-header">
-    <h2>Luyện gõ 10 ngón</h2>
-    <p>Chọn bài luyện và thời gian, rồi gõ trực tiếp trên đoạn văn.</p>
-  </header>
-  <div class="focus-controls">
-    <button type="button" class="focus-toggle" aria-pressed={focusMode} onclick={toggleFocusMode}>
-      {focusMode ? 'Thoát chế độ tập trung' : 'Bật chế độ tập trung'}
-    </button>
+  <div class="toolbar">
+    <div class="toolbar-config">
+      <div class="field">
+        <label class="visually-hidden" for="language">Ngôn ngữ</label>
+        <select id="language" value={selectedLanguage} onchange={changeLanguage}>
+          <option value="vi">Tiếng Việt</option>
+          <option value="en">English</option>
+        </select>
+      </div>
 
-    <TypingSettings suspended={focusMode} />
+      <div class="field">
+        <label class="visually-hidden" for="lesson">Bài luyện</label>
+        <select id="lesson" value={selectedLessonId} onchange={changeLesson}>
+          {#each availableLessons as lesson (lesson.id)}
+            <option value={lesson.id}>{lesson.title}</option>
+          {/each}
+        </select>
+      </div>
 
-    {#if focusMode}
-      <span class="focus-hint">Nhấn Esc để thoát.</span>
-    {/if}
-  </div>
-  <!-- Lựa chọn ngôn ngữ và bài luyện -->
-  <div class="settings">
-    <div class="field">
-      <label for="language">Ngôn ngữ</label>
-
-      <select id="language" value={selectedLanguage} onchange={changeLanguage}>
-        <option value="vi">Tiếng Việt</option>
-        <option value="en">English</option>
-      </select>
+      <fieldset class="duration-picker">
+        <legend class="visually-hidden">Thời gian luyện</legend>
+        <div class="duration-options">
+          {#each DURATIONS as seconds (seconds)}
+            <button
+              type="button"
+              class="duration-button"
+              aria-pressed={selectedDuration === seconds}
+              onclick={() => changeDuration(seconds)}
+            >
+              {seconds}s
+            </button>
+          {/each}
+        </div>
+      </fieldset>
     </div>
 
-    <div class="field">
-      <label for="lesson">Bài luyện</label>
+    <div class="focus-controls">
+      <button
+        type="button"
+        class="focus-toggle"
+        aria-pressed={focusMode}
+        aria-label={focusMode ? 'Thoát chế độ tập trung' : 'Bật chế độ tập trung'}
+        onclick={toggleFocusMode}
+      >
+        {focusMode ? 'Thoát' : 'Tập trung'}
+      </button>
 
-      <select id="lesson" value={selectedLessonId} onchange={changeLesson}>
-        {#each availableLessons as lesson (lesson.id)}
-          <option value={lesson.id}>{lesson.title}</option>
-        {/each}
-      </select>
-    </div>
-  </div>
+      <TypingSettings suspended={focusMode} />
 
-  <!-- Lựa chọn thời gian -->
-  <fieldset class="duration-picker">
-    <legend>Thời gian luyện</legend>
-
-    <div class="duration-options">
-      {#each DURATIONS as seconds (seconds)}
-        <button
-          type="button"
-          class="duration-button"
-          aria-pressed={selectedDuration === seconds}
-          onclick={() => changeDuration(seconds)}
-        >
-          {seconds}s
-        </button>
-      {/each}
-    </div>
-  </fieldset>
-
-  <!-- Thống kê -->
-  <div class="stats">
-    <div class="stat">
-      <span class="stat-value">{metrics.wpm}</span>
-      <span class="stat-label">WPM</span>
-    </div>
-
-    <div class="stat">
-      <span class="stat-value">{metrics.accuracy}%</span>
-      <span class="stat-label">Chính xác</span>
-    </div>
-
-    <div class="stat">
-      <span class="stat-value">{remainingSeconds}s</span>
-      <span class="stat-label">Còn lại</span>
+      {#if focusMode}
+        <span class="focus-hint">Nhấn Esc để thoát.</span>
+      {/if}
     </div>
   </div>
 
-  <!-- Văn bản luyện gõ -->
-  <div class="text-box">
-    <TypingText text={sampleText} typed={typedText} />
+  <p class="stats-line">
+    <span><strong>{metrics.wpm}</strong> WPM</span>
+    <span><strong>{metrics.accuracy}%</strong> chính xác</span>
+    <span><strong>{remainingSeconds}s</strong> còn lại</span>
+  </p>
 
+  <div class="stage">
     <label for="typing-input" class="typing-target">
       <span class="visually-hidden"> Nhấp vào văn bản để bắt đầu gõ </span>
     </label>
+    <div class="text-box">
+      <TypingText text={sampleText} typed={typedText} />
 
-    <textarea
-      bind:this={inputElement}
-      id="typing-input"
-      class="typing-capture"
-      value={typedText}
-      oninput={handleInput}
-      onbeforeinput={handleBeforeInput}
-      ondrop={(event) => event.preventDefault()}
-      onkeydown={handleFocusKeydown}
-      oncompositionstart={handleCompositionStart}
-      oncompositionend={handleCompositionEnd}
-      onpaste={(event) => event.preventDefault()}
-      disabled={status === 'finished'}
-      spellcheck={false}
-      autocomplete="off"
-      autocapitalize="off"></textarea>
+      <textarea
+        bind:this={inputElement}
+        id="typing-input"
+        class="typing-capture"
+        value={typedText}
+        oninput={handleInput}
+        onbeforeinput={handleBeforeInput}
+        ondrop={(event) => event.preventDefault()}
+        onkeydown={handleFocusKeydown}
+        oncompositionstart={handleCompositionStart}
+        oncompositionend={handleCompositionEnd}
+        onpaste={(event) => event.preventDefault()}
+        disabled={status === 'finished'}
+        spellcheck={false}
+        autocomplete="off"
+        autocapitalize="off"></textarea>
+    </div>
   </div>
 
   <!-- Bàn phím ảo hướng dẫn gõ 10 ngón -->
@@ -415,7 +403,7 @@
       <span>Tiến độ: {metrics.typedChars}/{totalChars}</span>
     </div>
 
-    <button type="button" onclick={resetTyping}> Làm lại </button>
+    <button type="button" class="restart" onclick={resetTyping}>Làm lại</button>
   </div>
 
   <!-- Kết quả -->
@@ -446,51 +434,45 @@
 
 <style>
   .trainer {
+    position: relative;
     display: flex;
+    flex: 1;
     flex-direction: column;
     gap: var(--space-5);
-    margin-top: var(--space-6);
   }
 
-  .trainer-header h2 {
-    margin: 0 0 var(--space-2);
-    font-size: var(--font-size-xl);
-    color: var(--color-text);
+  .toolbar,
+  .toolbar-config,
+  .focus-controls,
+  .duration-options,
+  .stats-line,
+  .bottom-bar,
+  .progress {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
   }
 
-  .trainer-header p {
-    margin: 0;
-    color: var(--color-text-muted);
-  }
-
-  .settings {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-4);
+  .toolbar,
+  .stats-line,
+  .bottom-bar {
+    justify-content: center;
   }
 
   .field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
     min-width: 0;
-  }
-
-  .field label,
-  .duration-picker legend {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-secondary);
   }
 
   select {
-    width: 100%;
-    min-width: 0;
-    padding: var(--space-3);
-    background: var(--color-surface);
+    max-width: 240px;
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    color: var(--color-text);
+    border-radius: var(--radius-full);
+    color: var(--color-text-secondary);
     font: inherit;
+    font-size: var(--font-size-sm);
     cursor: pointer;
   }
 
@@ -500,90 +482,64 @@
   }
 
   .duration-picker {
-    border: 0;
     margin: 0;
     padding: 0;
+    border: 0;
     min-width: 0;
   }
 
-  .duration-picker legend {
-    margin-bottom: var(--space-3);
-  }
-
-  .duration-options {
-    display: flex;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-  }
-
-  .duration-button {
-    min-width: 65px;
-    padding: var(--space-2) var(--space-4);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
+  .duration-button,
+  .focus-toggle,
+  .restart {
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-full);
     color: var(--color-text-muted);
     font-size: var(--font-size-sm);
   }
 
-  .duration-button:hover:not(:disabled) {
+  .duration-button:hover:not(:disabled),
+  .focus-toggle:hover:not(:disabled),
+  .restart:hover:not(:disabled) {
     background: var(--color-surface-hover);
+    color: var(--color-text);
   }
 
-  .duration-button[aria-pressed='true'] {
+  .duration-button[aria-pressed='true'],
+  .focus-toggle[aria-pressed='true'] {
     background: var(--color-primary-soft);
-    border-color: var(--color-primary);
     color: var(--color-primary);
   }
 
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--space-3);
-  }
-
-  .stat {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-4);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-  }
-
-  .stat-value {
-    font-size: clamp(24px, 4vw, 36px);
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    color: var(--color-primary);
-  }
-
-  .stat-label {
-    font-size: var(--font-size-sm);
+  .stats-line {
+    margin: 0;
     color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+  }
+
+  .stats-line strong {
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  .stage {
+    position: relative;
+    display: flex;
+    flex: 1;
+    align-items: center;
+    min-height: clamp(220px, 36vh, 460px);
   }
 
   .text-box {
     position: relative;
-    padding: var(--space-6);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
+    width: 100%;
+    padding: var(--space-2) 0;
     cursor: text;
   }
 
-  .bottom-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: var(--space-4);
-  }
-
   .progress {
-    display: flex;
-    gap: var(--space-4);
-    flex-wrap: wrap;
     font-size: var(--font-size-sm);
     color: var(--color-text-muted);
   }
@@ -604,17 +560,8 @@
   }
 
   @media (max-width: 600px) {
-    .settings {
-      grid-template-columns: 1fr;
-    }
-
-    .text-box {
-      padding: var(--space-4);
-    }
-
-    .bottom-bar {
-      flex-direction: column;
-      align-items: stretch;
+    select {
+      max-width: 100%;
     }
   }
 
@@ -631,49 +578,13 @@
    FOCUS MODE
 ======================================= */
 
-  .trainer {
-    position: relative;
-  }
-
-  .focus-controls {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-  }
-
-  .focus-toggle {
-    padding: var(--space-2) var(--space-4);
-    background: var(--color-surface);
-    color: var(--color-text-secondary);
-    border: 1px solid var(--color-border);
-    font-size: var(--font-size-sm);
-  }
-
-  .focus-toggle:hover:not(:disabled) {
-    background: var(--color-surface-hover);
-  }
-
-  .focus-toggle[aria-pressed='true'] {
-    background: var(--color-primary-soft);
-    color: var(--color-primary);
-    border-color: var(--color-primary);
-  }
-
   .focus-hint {
     color: var(--color-text-muted);
     font-size: var(--font-size-sm);
   }
 
-  .trainer.focus-mode .settings,
-  .trainer.focus-mode .duration-picker {
+  .trainer.focus-mode .toolbar-config {
     display: none;
-  }
-
-  .trainer.focus-mode .text-box {
-    min-height: 170px;
-    border-color: var(--color-primary);
-    transition: border-color var(--transition-fast);
   }
 
   .typing-target {

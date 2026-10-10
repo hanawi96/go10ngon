@@ -5,6 +5,8 @@ import {
   splitGraphemes,
   limitTypingText,
   isTypingTextComplete,
+  groupTypingTokens,
+  nextTypingPageEnd,
 } from './typing-engine';
 
 describe('Go10Ngon Typing Engine', () => {
@@ -15,18 +17,7 @@ describe('Go10Ngon Typing Engine', () => {
   it('nhận diện đúng ký tự tiếng Việt có dấu', () => {
     const characters = splitGraphemes('Tiếng Việt');
 
-    expect(characters).toEqual([
-      'T',
-      'i',
-      'ế',
-      'n',
-      'g',
-      ' ',
-      'V',
-      'i',
-      'ệ',
-      't',
-    ]);
+    expect(characters).toEqual(['T', 'i', 'ế', 'n', 'g', ' ', 'V', 'i', 'ệ', 't']);
   });
 
   it('không tách rời ký tự và dấu kết hợp', () => {
@@ -54,15 +45,35 @@ describe('Go10Ngon Typing Engine', () => {
   });
 
   it('so sánh hai cách biểu diễn Unicode', () => {
-    expect(
-      isTypingTextComplete('tiếng', 'tie\u0302\u0301ng'),
-    ).toBe(true);
+    expect(isTypingTextComplete('tiếng', 'tie\u0302\u0301ng')).toBe(true);
   });
 
   it('phát hiện nội dung không chính xác', () => {
-    expect(
-      isTypingTextComplete('gõ đúng', 'gõ sai'),
-    ).toBe(false);
+    expect(isTypingTextComplete('gõ đúng', 'gõ sai')).toBe(false);
+  });
+
+  it('giữ nguyên từ tiếng Việt khi xuống dòng', () => {
+    expect(groupTypingTokens(splitGraphemes('bắt đầu'), 4)).toEqual([
+      { kind: 'word', start: 4, characters: ['b', 'ắ', 't'] },
+      { kind: 'break', start: 7, characters: [' '] },
+      { kind: 'word', start: 8, characters: ['đ', 'ầ', 'u'] },
+    ]);
+  });
+
+  it('chỉ sang trang sau khi gõ hết trang hiện tại', () => {
+    const characters = splitGraphemes('bắt đầu ngay');
+
+    expect(nextTypingPageEnd(characters, 0, 6)).toBe(4);
+    expect(characters.slice(0, 4).join('')).toBe('bắt ');
+    expect(nextTypingPageEnd(characters, 4, 6)).toBe(8);
+    expect(characters.slice(4, 8).join('')).toBe('đầu ');
+    expect(nextTypingPageEnd(characters, 8, 6)).toBe(characters.length);
+  });
+
+  it('giữ dấu câu đi cùng từ', () => {
+    expect(groupTypingTokens(splitGraphemes('phím.'))).toEqual([
+      { kind: 'word', start: 0, characters: ['p', 'h', 'í', 'm', '.'] },
+    ]);
   });
 
   it('xử lý chuỗi rỗng', () => {

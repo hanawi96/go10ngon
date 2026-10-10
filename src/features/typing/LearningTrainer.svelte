@@ -162,77 +162,74 @@
 </script>
 
 <section class="learning" class:focus-mode={focusMode}>
-  <div class="learning-heading">
-    <h2>Lộ trình luyện gõ</h2>
-    <p>Học từ các hàng phím cơ bản đến văn bản hoàn chỉnh. Gõ trực tiếp trên đoạn văn.</p>
-  </div>
+  <div class="toolbar">
+    <div class="lesson-list">
+      {#each LEARNING_LESSONS as lesson, index (lesson.id)}
+        <button
+          type="button"
+          class="lesson-choice"
+          aria-pressed={index === currentIndex}
+          onclick={() => selectLesson(index)}
+        >
+          <span class="lesson-number">{index + 1}</span>
+          <span class="lesson-name">{lesson.title}</span>
+          {#if completedIds.includes(lesson.id)}
+            <span class="completed-label"><span class="visually-hidden">Đã xong</span>✓</span>
+          {/if}
+        </button>
+      {/each}
+    </div>
 
-  <div class="focus-controls">
-    <button type="button" class="focus-toggle" aria-pressed={focusMode} onclick={toggleFocusMode}>
-      {focusMode ? 'Thoát chế độ tập trung' : 'Bật chế độ tập trung'}
-    </button>
-
-    <TypingSettings suspended={focusMode} />
-
-    {#if focusMode}
-      <span class="focus-hint">Nhấn Esc để thoát.</span>
-    {/if}
-  </div>
-
-  <div class="lesson-list">
-    {#each LEARNING_LESSONS as lesson, index (lesson.id)}
+    <div class="focus-controls">
       <button
         type="button"
-        class="lesson-choice"
-        aria-pressed={index === currentIndex}
-        onclick={() => selectLesson(index)}
+        class="focus-toggle"
+        aria-pressed={focusMode}
+        aria-label={focusMode ? 'Thoát chế độ tập trung' : 'Bật chế độ tập trung'}
+        onclick={toggleFocusMode}
       >
-        <span class="lesson-number">{index + 1}</span>
-        <span class="lesson-name">{lesson.title}</span>
-
-        {#if completedIds.includes(lesson.id)}
-          <span class="completed-label">✓ Đã xong</span>
-        {/if}
+        {focusMode ? 'Thoát' : 'Tập trung'}
       </button>
-    {/each}
+
+      <TypingSettings suspended={focusMode} />
+
+      {#if focusMode}
+        <span class="focus-hint">Nhấn Esc để thoát.</span>
+      {/if}
+    </div>
   </div>
 
-  <section class="practice" aria-label="Bài luyện hiện tại">
-    <div class="practice-heading">
-      <div>
-        <span class="level-label">
-          Bài {currentIndex + 1}/{LEARNING_LESSONS.length}
-        </span>
-        <h3>{currentLesson.title}</h3>
-      </div>
-    </div>
-
+  <div class="passage-heading">
+    <p class="passage-label">
+      Bài {currentIndex + 1}/{LEARNING_LESSONS.length} · {currentLesson.title}
+    </p>
     <p class="lesson-description">{currentLesson.description}</p>
+  </div>
 
-    <div class="metrics">
-      <span>Đúng: <strong>{metrics.correctChars}</strong></span>
-      <span>Sai: <strong>{metrics.incorrectChars}</strong></span>
-      <span>Chính xác: <strong>{metrics.accuracy}%</strong></span>
-      <span>Tiến độ: <strong>{progress}%</strong></span>
-    </div>
+  <p class="metrics">
+    <span>Đúng <strong>{metrics.correctChars}</strong></span>
+    <span>Sai <strong>{metrics.incorrectChars}</strong></span>
+    <span>Chính xác <strong>{metrics.accuracy}%</strong></span>
+    <span>Tiến độ <strong>{progress}%</strong></span>
+  </p>
 
-    <div
-      class="progress-track"
-      role="progressbar"
-      aria-label="Tiến độ bài luyện"
-      aria-valuemin="0"
-      aria-valuemax="100"
-      aria-valuenow={progress}
-    >
-      <div class="progress-fill" style:width={`${progress}%`}></div>
-    </div>
+  <div
+    class="progress-track"
+    role="progressbar"
+    aria-label="Tiến độ bài luyện"
+    aria-valuemin="0"
+    aria-valuemax="100"
+    aria-valuenow={progress}
+  >
+    <div class="progress-fill" style:width={`${progress}%`}></div>
+  </div>
 
+  <div class="stage">
+    <label for="learning-input" class="typing-target">
+      <span class="visually-hidden"> Nhấp vào văn bản để bắt đầu gõ </span>
+    </label>
     <div class="text-box">
       <TypingText text={currentLesson.text} typed={typedText} />
-
-      <label for="learning-input" class="typing-target">
-        <span class="visually-hidden"> Nhấp vào văn bản để bắt đầu gõ </span>
-      </label>
 
       <textarea
         bind:this={inputElement}
@@ -251,159 +248,145 @@
         autocomplete="off"
         autocapitalize="off"></textarea>
     </div>
+  </div>
 
-    {#if showKeyboard && !focusMode}
-      <VirtualKeyboard {nextCharacter} />
-    {/if}
+  {#if showKeyboard && !focusMode}
+    <VirtualKeyboard {nextCharacter} />
+  {/if}
 
-    {#if isComplete}
-      <div class="success-message" role="status">
-        <strong>Hoàn thành bài học!</strong>
-        <p>
-          Bạn đã gõ chính xác toàn bộ nội dung.
-          {#if currentIndex === LEARNING_LESSONS.length - 1}
-            Bạn đã hoàn thành cấp độ cuối cùng!
-          {:else}
-            Hãy tiếp tục với bài học kế tiếp.
-          {/if}
-        </p>
-      </div>
-    {/if}
-
-    {#if storageWarning}
-      <p class="storage-warning" role="alert">
-        Không thể đọc hoặc lưu tiến độ trên trình duyệt này.
+  {#if isComplete}
+    <div class="success-message" role="status">
+      <strong>Hoàn thành bài học!</strong>
+      <p>
+        Bạn đã gõ chính xác toàn bộ nội dung.
+        {#if currentIndex === LEARNING_LESSONS.length - 1}
+          Bạn đã hoàn thành cấp độ cuối cùng!
+        {:else}
+          Hãy tiếp tục với bài học kế tiếp.
+        {/if}
       </p>
-    {/if}
-
-    <div class="actions">
-      <button type="button" class="reset-button" onclick={() => selectLesson(currentIndex)}>
-        Luyện lại
-      </button>
-
-      {#if isComplete && currentIndex < LEARNING_LESSONS.length - 1}
-        <button type="button" class="next-button" onclick={() => selectLesson(currentIndex + 1)}>
-          Bài tiếp theo →
-        </button>
-      {/if}
     </div>
-  </section>
+  {/if}
+
+  {#if storageWarning}
+    <p class="storage-warning" role="alert">Không thể đọc hoặc lưu tiến độ trên trình duyệt này.</p>
+  {/if}
+
+  <div class="actions">
+    <button type="button" class="reset-button" onclick={() => selectLesson(currentIndex)}>
+      Luyện lại
+    </button>
+
+    {#if isComplete && currentIndex < LEARNING_LESSONS.length - 1}
+      <button type="button" class="next-button" onclick={() => selectLesson(currentIndex + 1)}>
+        Bài tiếp theo →
+      </button>
+    {/if}
+  </div>
 </section>
 
 <style>
   .learning {
+    position: relative;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .toolbar,
+  .lesson-list,
+  .focus-controls,
+  .metrics,
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .toolbar,
+  .passage-heading,
+  .metrics,
+  .actions {
+    justify-content: center;
+  }
+
+  .passage-heading {
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
-    margin-top: var(--space-6);
+    gap: var(--space-2);
+    text-align: center;
   }
 
-  .learning-heading h2,
-  .practice-heading h3 {
-    margin: 0 0 var(--space-2);
-    color: var(--color-text);
-  }
-
-  .learning-heading h2 {
-    font-size: var(--font-size-xl);
-  }
-
-  .learning-heading p,
-  .lesson-description {
+  .passage-label,
+  .lesson-description,
+  .metrics {
     margin: 0;
     color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
     line-height: 1.6;
   }
 
-  .lesson-list {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-3);
+  .metrics strong {
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .lesson-choice,
+  .focus-toggle,
+  .reset-button {
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
+    color: var(--color-text-muted);
+    border: 1px solid transparent;
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-sm);
   }
 
   .lesson-choice {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-3);
-    min-width: 0;
-    text-align: left;
-    background: var(--color-surface);
-    color: var(--color-text);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
+    gap: var(--space-2);
+    max-width: 100%;
   }
 
-  .lesson-choice:hover:not(:disabled) {
+  .lesson-choice:hover:not(:disabled),
+  .focus-toggle:hover:not(:disabled),
+  .reset-button:hover:not(:disabled) {
     background: var(--color-surface-hover);
+    color: var(--color-text);
   }
 
-  .lesson-choice[aria-pressed='true'] {
-    border-color: var(--color-primary);
+  .lesson-choice[aria-pressed='true'],
+  .focus-toggle[aria-pressed='true'] {
     background: var(--color-primary-soft);
-  }
-
-  .lesson-number {
-    display: grid;
-    place-items: center;
-    flex-shrink: 0;
-    width: 30px;
-    height: 30px;
-    border-radius: var(--radius-sm);
-    background: var(--color-background);
     color: var(--color-primary);
   }
 
-  .lesson-name {
-    min-width: 0;
-    flex: 1;
-    font-size: var(--font-size-sm);
+  .lesson-number,
+  .completed-label {
+    color: var(--color-primary);
+    font-size: var(--font-size-xs);
+  }
+
+  .lesson-choice[aria-pressed='true'] .lesson-number {
+    color: var(--color-primary);
   }
 
   .completed-label {
     color: var(--color-success);
-    font-size: var(--font-size-xs);
-    white-space: nowrap;
   }
 
-  .practice {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-5);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-  }
-
-  .level-label {
-    color: var(--color-primary);
-    font-size: var(--font-size-sm);
-  }
-
-  .practice-heading h3 {
-    margin-top: var(--space-2);
-    font-size: var(--font-size-xl);
-  }
-
-  .metrics {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: var(--space-3);
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-  }
-
-  .metrics strong {
-    color: var(--color-text);
+  .lesson-name {
+    min-width: 0;
   }
 
   .progress-track {
-    height: 7px;
+    height: 3px;
     overflow: hidden;
     border-radius: var(--radius-full);
-    background: var(--color-background);
+    background: var(--color-surface);
   }
 
   .progress-fill {
@@ -413,12 +396,18 @@
     transition: width var(--transition-fast);
   }
 
+  .stage {
+    position: relative;
+    display: flex;
+    flex: 1;
+    align-items: center;
+    min-height: clamp(200px, 32vh, 420px);
+  }
+
   .text-box {
     position: relative;
-    padding: var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-background);
+    width: 100%;
+    padding: var(--space-2) 0;
     cursor: text;
   }
 
@@ -436,66 +425,6 @@
   .storage-warning {
     color: var(--color-error);
     font-size: var(--font-size-sm);
-  }
-
-  .actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--space-3);
-    flex-wrap: wrap;
-  }
-
-  .reset-button {
-    background: var(--color-background);
-    color: var(--color-text-secondary);
-    border: 1px solid var(--color-border);
-  }
-
-  .reset-button:hover:not(:disabled) {
-    background: var(--color-surface-hover);
-  }
-
-  @media (max-width: 600px) {
-    .lesson-list {
-      grid-template-columns: 1fr;
-    }
-
-    .practice {
-      padding: var(--space-4);
-    }
-  }
-
-  /* =======================================
-   LEARNING FOCUS MODE
-======================================= */
-
-  .learning {
-    position: relative;
-  }
-
-  .focus-controls {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-  }
-
-  .focus-toggle {
-    padding: var(--space-2) var(--space-4);
-    background: var(--color-surface);
-    color: var(--color-text-secondary);
-    border: 1px solid var(--color-border);
-    font-size: var(--font-size-sm);
-  }
-
-  .focus-toggle:hover:not(:disabled) {
-    background: var(--color-surface-hover);
-  }
-
-  .focus-toggle[aria-pressed='true'] {
-    background: var(--color-primary-soft);
-    border-color: var(--color-primary);
-    color: var(--color-primary);
   }
 
   .focus-hint {
@@ -534,10 +463,5 @@
   .learning.focus-mode .lesson-list,
   .learning.focus-mode .lesson-description {
     display: none;
-  }
-
-  .learning.focus-mode .text-box {
-    min-height: 150px;
-    border-color: var(--color-primary);
   }
 </style>

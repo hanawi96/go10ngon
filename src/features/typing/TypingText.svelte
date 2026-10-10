@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { splitGraphemes } from './typing-engine';
+  import { groupTypingTokens, nextTypingPageEnd, splitGraphemes } from './typing-engine';
 
   let {
     text,
@@ -9,11 +9,8 @@
     typed: string;
   } = $props();
 
-  // Số ký tự trước khi chuyển vùng hiển thị.
-  const PAGE_SIZE = 120;
-
-  // Số ký tự hiển thị tối đa cùng lúc.
-  const VISIBLE_SIZE = 260;
+  // Một trang văn bản. Chỉ chuyển trang khi gõ hết các chữ đang hiện.
+  const PAGE_SIZE = 260;
 
   // Con trỏ ngắn hơn thân chữ một chút cho khỏi đụng dòng trên.
   const CARET_INSET = 3;
@@ -21,10 +18,27 @@
   let expectedChars = $derived(splitGraphemes(text));
   let typedChars = $derived(splitGraphemes(typed));
 
-  // Tự chuyển vùng khi người dùng gõ thêm.
-  let visibleStart = $derived(Math.floor(typedChars.length / PAGE_SIZE) * PAGE_SIZE);
+  let page = $derived.by(() => {
+    const total = expectedChars.length;
+    const typedCount = Math.min(typedChars.length, total);
+    const cursor = typedCount >= total && total > 0 ? total - 1 : typedCount;
+    let start = 0;
 
-  let visibleChars = $derived(expectedChars.slice(visibleStart, visibleStart + VISIBLE_SIZE));
+    while (start < total) {
+      const end = nextTypingPageEnd(expectedChars, start, PAGE_SIZE);
+
+      if (cursor < end || end >= total) {
+        return { start, end };
+      }
+
+      start = end;
+    }
+
+    return { start: 0, end: total };
+  });
+
+  let visibleChars = $derived(expectedChars.slice(page.start, page.end));
+  let tokens = $derived(groupTypingTokens(visibleChars, page.start));
 
   let textElement = $state<HTMLDivElement>();
   let caretElement = $state<HTMLSpanElement>();
@@ -98,16 +112,32 @@
 </script>
 
 <div class="typing-text" bind:this={textElement}>
-  {#each visibleChars as character, index (visibleStart + index)}
-    {@const absoluteIndex = visibleStart + index}
-
-    <span
-      class="character"
-      class:correct={absoluteIndex < typedChars.length && typedChars[absoluteIndex] === character}
-      class:incorrect={absoluteIndex < typedChars.length && typedChars[absoluteIndex] !== character}
-      class:active={absoluteIndex === typedChars.length}
-      >{character === ' ' ? '\u00a0' : character}</span
-    >
+  {#each tokens as token (token.start)}
+    {#if token.kind === 'word'}
+      <span class="word">
+        {#each token.characters as character, offset (token.start + offset)}
+          {@const absoluteIndex = token.start + offset}
+          <span
+            class="character"
+            class:correct={absoluteIndex < typedChars.length &&
+              typedChars[absoluteIndex] === character}
+            class:incorrect={absoluteIndex < typedChars.length &&
+              typedChars[absoluteIndex] !== character}
+            class:active={absoluteIndex === typedChars.length}>{character}</span
+          >
+        {/each}
+      </span>
+    {:else}
+      {@const absoluteIndex = token.start}
+      {@const character = token.characters[0]}
+      <span
+        class="character"
+        class:correct={absoluteIndex < typedChars.length && typedChars[absoluteIndex] === character}
+        class:incorrect={absoluteIndex < typedChars.length &&
+          typedChars[absoluteIndex] !== character}
+        class:active={absoluteIndex === typedChars.length}>{character}</span
+      >
+    {/if}
   {/each}
 
   <span class="caret" bind:this={caretElement} aria-hidden="true"></span>
@@ -120,9 +150,12 @@
     font-size: var(--typing-font-size);
     line-height: 1.9;
     letter-spacing: 0.3px;
-
-    overflow-wrap: anywhere;
+    white-space: pre-wrap;
     user-select: none;
+  }
+
+  .word {
+    white-space: nowrap;
   }
 
   .character {

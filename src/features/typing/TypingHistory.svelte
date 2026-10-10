@@ -1,4 +1,3 @@
-
 <script lang="ts">
   import { LESSONS } from './lessons';
   import type { TypingResult } from './storage';
@@ -15,9 +14,7 @@
   // Chỉ so sánh kỷ lục cùng bài luyện và thời lượng.
   let matchingResults = $derived(
     results.filter(
-      (item) =>
-        item.lessonId === lessonId &&
-        item.durationSeconds === durationSeconds,
+      (item) => item.lessonId === lessonId && item.durationSeconds === durationSeconds,
     ),
   );
 
@@ -53,9 +50,7 @@
     </div>
 
     {#if results.length > 0}
-      <button type="button" class="clear-button" onclick={onClear}>
-        Xóa lịch sử
-      </button>
+      <button type="button" class="clear-button" onclick={onClear}> Xóa lịch sử </button>
     {/if}
   </div>
 
@@ -76,8 +71,7 @@
 
   {#if results.length === 0}
     <p class="empty">
-      Chưa có kết quả nào. Hãy hoàn thành một lần luyện gõ
-      để bắt đầu lưu thành tích.
+      Chưa có kết quả nào. Hãy hoàn thành một lần luyện gõ để bắt đầu lưu thành tích.
     </p>
   {:else}
     <h4>8 lần luyện gần nhất</h4>
@@ -105,9 +99,7 @@
       {/each}
     </div>
 
-    <p class="history-note">
-      Hiển thị 8 kết quả mới nhất, lưu tối đa 50 kết quả.
-    </p>
+    <p class="history-note">Hiển thị 8 kết quả mới nhất, lưu tối đa 50 kết quả.</p>
   {/if}
 </section>
 
@@ -116,11 +108,8 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
-    padding: var(--space-5);
-
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
+    padding: var(--space-5) 0 0;
+    border-top: 1px solid var(--color-border);
   }
 
   .history-header {
@@ -132,8 +121,8 @@
 
   .history-header h3 {
     margin: 0 0 var(--space-2);
-    color: var(--color-text);
-    font-size: var(--font-size-lg);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-md);
   }
 
   .history-header p,
@@ -162,7 +151,7 @@
     justify-content: space-between;
     gap: var(--space-4);
     padding: var(--space-4);
-    background: var(--color-background);
+    background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
   }

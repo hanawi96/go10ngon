@@ -1,4 +1,3 @@
-
 <script lang="ts">
   type Finger = 'pinky' | 'ring' | 'middle' | 'index' | 'thumb';
   type Hand = 'left' | 'right' | 'both';
@@ -141,7 +140,7 @@
     '(': 'Digit9',
     ')': 'Digit0',
     '-': 'Minus',
-    '_': 'Minus',
+    _: 'Minus',
     '–': 'Minus',
     '—': 'Minus',
     '=': 'Equal',
@@ -217,16 +216,10 @@
 
   let activeCode = $derived(getSuggestedKey(nextCharacter));
 
-  let activeKey = $derived(
-    allKeys.find((key) => key.code === activeCode) ?? null,
-  );
+  let activeKey = $derived(allKeys.find((key) => key.code === activeCode) ?? null);
 
   let displayCharacter = $derived(
-    nextCharacter === ' '
-      ? 'Space'
-      : nextCharacter === '\b'
-        ? 'Backspace'
-        : nextCharacter,
+    nextCharacter === ' ' ? 'Space' : nextCharacter === '\b' ? 'Backspace' : nextCharacter,
   );
 </script>
 
@@ -276,17 +269,13 @@
   </div>
 
   <p class="keyboard-note">
-    Màu sắc hướng dẫn ngón tay; với tiếng Việt có dấu, phím gợi ý
-    là phím chữ cái cơ bản.
+    Màu sắc hướng dẫn ngón tay; với tiếng Việt có dấu, phím gợi ý là phím chữ cái cơ bản.
   </p>
 </section>
 
 <style>
   .keyboard-guide {
-    padding: var(--space-5);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
+    padding: var(--space-4) 0 0;
   }
 
   .guide-header {
@@ -298,8 +287,9 @@
 
   .guide-header h3 {
     margin: 0;
-    font-size: var(--font-size-lg);
-    color: var(--color-text);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--color-text-muted);
   }
 
   .guide-header > span {
@@ -347,7 +337,7 @@
     min-width: 0;
     height: 43px;
 
-    background: var(--color-background);
+    background: var(--color-surface);
     color: var(--color-text-secondary);
 
     border: 1px solid var(--color-border);
@@ -373,7 +363,7 @@
     background: var(--finger-tone);
   }
 
-   .key:global(.finger-pinky),
+  .key:global(.finger-pinky),
   .legend-dot:global(.finger-pinky) {
     --finger-tone: var(--finger-pinky);
   }
