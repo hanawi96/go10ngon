@@ -1,27 +1,15 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-import TypingText from './TypingText.svelte';
-import TypingHistory from './TypingHistory.svelte';
+  import TypingText from './TypingText.svelte';
+  import TypingHistory from './TypingHistory.svelte';
 
-import {
-  MAX_RESULTS,
-  loadTypingHistory,
-  saveTypingHistory,
-  type TypingResult,
-} from './storage';
-import VirtualKeyboard from './VirtualKeyboard.svelte';
+  import { MAX_RESULTS, loadTypingHistory, saveTypingHistory, type TypingResult } from './storage';
+  import VirtualKeyboard from './VirtualKeyboard.svelte';
 
-  import {
-    normalizeTypingText,
-    splitGraphemes,
-  } from './typing-engine';
+  import { normalizeTypingText, splitGraphemes } from './typing-engine';
 
   import { calculateTypingMetrics } from './metrics';
-import {
-  LESSONS,
-  buildContinuousLessonText,
-  type LessonLanguage,
-} from './lessons';
+  import { LESSONS, buildContinuousLessonText, type LessonLanguage } from './lessons';
 
   const DURATIONS = [15, 30, 60, 120] as const;
 
@@ -32,18 +20,18 @@ import {
   let selectedLanguage = $state<LessonLanguage>('vi');
   let selectedLessonId = $state('vi-basic');
   // Số đoạn văn đã được bổ sung trong phiên luyện.
-let continuationCount = $state(0);
+  let continuationCount = $state(0);
 
-// Nạp thêm nội dung khi còn 50 ký tự.
-const LOAD_AHEAD = 50;
+  // Nạp thêm nội dung khi còn 50 ký tự.
+  const LOAD_AHEAD = 50;
 
   let typedText = $state('');
   let elapsedMs = $state(0);
   let status = $state<Status>('idle');
-    // Chế độ luyện gõ tập trung
-let focusMode = $state(false);
-    let history = $state<TypingResult[]>([]);
-let storageWarning = $state(false);
+  // Chế độ luyện gõ tập trung
+  let focusMode = $state(false);
+  let history = $state<TypingResult[]>([]);
+  let storageWarning = $state(false);
 
   let inputElement: HTMLTextAreaElement;
   let startedAt: number | null = null;
@@ -51,42 +39,31 @@ let storageWarning = $state(false);
   let isComposing = false;
 
   // Bài luyện hiện tại
-  let availableLessons = $derived(
-    LESSONS.filter((lesson) => lesson.language === selectedLanguage),
-  );
+  let availableLessons = $derived(LESSONS.filter((lesson) => lesson.language === selectedLanguage));
 
   let currentLesson = $derived(
-    LESSONS.find((lesson) => lesson.id === selectedLessonId) ??
-      LESSONS[0],
+    LESSONS.find((lesson) => lesson.id === selectedLessonId) ?? LESSONS[0],
   );
 
-let sampleText = $derived(
-  buildContinuousLessonText(currentLesson, continuationCount),
-);
+  let sampleText = $derived(buildContinuousLessonText(currentLesson, continuationCount));
   let totalChars = $derived(splitGraphemes(sampleText).length);
 
   // Thời gian và thống kê
   let durationMs = $derived(selectedDuration * 1000);
 
-  let metrics = $derived(
-    calculateTypingMetrics(sampleText, typedText, elapsedMs),
-  );
+  let metrics = $derived(calculateTypingMetrics(sampleText, typedText, elapsedMs));
 
-  let remainingSeconds = $derived(
-    Math.ceil(Math.max(0, durationMs - elapsedMs) / 1000),
-  );
-
+  let remainingSeconds = $derived(Math.ceil(Math.max(0, durationMs - elapsedMs) / 1000));
 
   // Danh sách ký tự của bài luyện hiện tại
-let lessonCharacters = $derived(splitGraphemes(sampleText));
+  let lessonCharacters = $derived(splitGraphemes(sampleText));
 
-// Xác định ký tự/phím tiếp theo cần hướng dẫn
-let nextCharacter = $derived(
-  status === 'finished'
-    ? null
-    : (lessonCharacters[metrics.typedChars] ??
-      (typedText !== sampleText ? '\b' : null)),
-);
+  // Xác định ký tự/phím tiếp theo cần hướng dẫn
+  let nextCharacter = $derived(
+    status === 'finished'
+      ? null
+      : (lessonCharacters[metrics.typedChars] ?? (typedText !== sampleText ? '\b' : null)),
+  );
 
   function stopTimer() {
     if (timerId !== undefined) {
@@ -95,55 +72,51 @@ let nextCharacter = $derived(
     }
   }
 
-function finishTyping() {
-  if (status === 'finished') return;
+  function finishTyping() {
+    if (status === 'finished') return;
 
-  status = 'finished';
-  stopTimer();
+    status = 'finished';
+    stopTimer();
 
-  // Không lưu phiên chưa bắt đầu.
-  if (startedAt === null || typedText.length === 0) {
-    return;
-  }
-
-  const finalMetrics = calculateTypingMetrics(
-    sampleText,
-    typedText,
-    elapsedMs,
-  );
-
-  const result: TypingResult = {
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
-    lessonId: currentLesson.id,
-    language: selectedLanguage,
-    durationSeconds: selectedDuration,
-    elapsedMs,
-    wpm: finalMetrics.wpm,
-    accuracy: finalMetrics.accuracy,
-    correctChars: finalMetrics.correctChars,
-    incorrectChars: finalMetrics.incorrectChars,
-    completed: false,
-  };
-
-  history = [result, ...history].slice(0, MAX_RESULTS);
-
-  storageWarning = !saveTypingHistory(history);
-}
-
-  function updateClock() {
-    if (startedAt === null || status !== 'running') {
+    // Không lưu phiên chưa bắt đầu.
+    if (startedAt === null || typedText.length === 0) {
       return;
     }
 
-    elapsedMs = Math.min(
-      performance.now() - startedAt,
-      durationMs,
-    );
+    const finalMetrics = calculateTypingMetrics(sampleText, typedText, elapsedMs);
 
-    if (elapsedMs >= durationMs) {
-      finishTyping();
+    const result: TypingResult = {
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      lessonId: currentLesson.id,
+      language: selectedLanguage,
+      durationSeconds: selectedDuration,
+      elapsedMs,
+      wpm: finalMetrics.wpm,
+      accuracy: finalMetrics.accuracy,
+      correctChars: finalMetrics.correctChars,
+      incorrectChars: finalMetrics.incorrectChars,
+      completed: false,
+    };
+
+    history = [result, ...history].slice(0, MAX_RESULTS);
+
+    storageWarning = !saveTypingHistory(history);
+  }
+
+  function updateClock(): boolean {
+    if (startedAt === null || status !== 'running') {
+      return false;
     }
+
+    elapsedMs = Math.min(performance.now() - startedAt, durationMs);
+
+    if (elapsedMs < durationMs) {
+      return false;
+    }
+
+    finishTyping();
+    return true;
   }
 
   function startTimer() {
@@ -156,51 +129,58 @@ function finishTyping() {
   }
 
   function updateTyping(value: string) {
-  if (status === 'finished') return;
+    if (status === 'finished') return;
 
-  const normalized = normalizeTypingText(value);
-  const inputChars = splitGraphemes(normalized);
+    const normalized = normalizeTypingText(value);
+    const inputChars = splitGraphemes(normalized);
 
-  // Khi sắp gõ hết văn bản, tự động nối thêm đoạn mới.
-  if (inputChars.length >= totalChars - LOAD_AHEAD) {
-    continuationCount += 1;
+    // Khi sắp gõ hết văn bản, tự động nối thêm đoạn mới.
+    if (inputChars.length >= totalChars - LOAD_AHEAD) {
+      continuationCount += 1;
+    }
+
+    // Không cho nhập vượt quá lượng văn bản hiện có.
+    const nextText = inputChars.slice(0, totalChars).join('');
+
+    // Bắt đầu tính giờ khi nhập ký tự đầu tiên.
+    if (startedAt === null && nextText.length > 0) {
+      startTimer();
+    }
+
+    // Nếu thời gian vừa kết thúc, bỏ thao tác nhập mới.
+    if (updateClock()) {
+      inputElement.value = typedText;
+      return;
+    }
+
+    typedText = nextText;
+
+    if (inputElement.value !== nextText) {
+      inputElement.value = nextText;
+    }
+
+    // Không kết thúc khi gõ hết đoạn văn:
+    // phiên luyện chỉ kết thúc khi hết thời gian.
   }
-
-  // Không cho nhập vượt quá lượng văn bản hiện có.
-  const nextText = inputChars
-    .slice(0, totalChars)
-    .join('');
-
-  // Bắt đầu tính giờ khi nhập ký tự đầu tiên.
-  if (startedAt === null && nextText.length > 0) {
-    startTimer();
-  }
-
-  if (status === 'running') {
-    updateClock();
-  }
-
-  // Nếu thời gian vừa kết thúc, bỏ thao tác nhập mới.
-  if (status === 'finished') {
-    inputElement.value = typedText;
-    return;
-  }
-
-  typedText = nextText;
-
-  if (inputElement.value !== nextText) {
-    inputElement.value = nextText;
-  }
-
-  // Không kết thúc khi gõ hết đoạn văn:
-  // phiên luyện chỉ kết thúc khi hết thời gian.
-}
 
   function handleInput(event: Event) {
-    if (isComposing) return;
+    const inputEvent = event as InputEvent;
+
+    // Không cập nhật khi IME vẫn đang ghép ký tự.
+    if (isComposing || inputEvent.isComposing) {
+      return;
+    }
 
     const target = event.currentTarget as HTMLTextAreaElement;
+
     updateTyping(target.value);
+  }
+
+  // Không cho dán hoặc kéo thả văn bản vào bài kiểm tra.
+  function handleBeforeInput(event: InputEvent) {
+    if (event.inputType.startsWith('insertFromPaste') || event.inputType === 'insertFromDrop') {
+      event.preventDefault();
+    }
   }
 
   function handleCompositionStart() {
@@ -215,27 +195,23 @@ function finishTyping() {
   }
 
   async function toggleFocusMode() {
-  focusMode = !focusMode;
+    focusMode = !focusMode;
 
-  await tick();
+    await tick();
 
-  // Tự động đưa con trỏ vào ô nhận phím.
-  if (status !== 'finished') {
-    inputElement?.focus();
+    // Tự động đưa con trỏ vào ô nhận phím.
+    if (status !== 'finished') {
+      inputElement?.focus();
+    }
   }
-}
 
-function handleFocusKeydown(event: KeyboardEvent) {
-  // Nhấn Esc để thoát Focus Mode.
-  // Không can thiệp khi bộ gõ tiếng Việt đang xử lý IME.
-  if (
-    event.key === 'Escape' &&
-    focusMode &&
-    !isComposing
-  ) {
-    focusMode = false;
+  function handleFocusKeydown(event: KeyboardEvent) {
+    // Nhấn Esc để thoát Focus Mode.
+    // Không can thiệp khi bộ gõ tiếng Việt đang xử lý IME.
+    if (event.key === 'Escape' && focusMode && !isComposing) {
+      focusMode = false;
+    }
   }
-}
 
   async function resetTyping() {
     stopTimer();
@@ -268,9 +244,7 @@ function handleFocusKeydown(event: KeyboardEvent) {
 
     selectedLanguage = language;
 
-    selectedLessonId =
-      LESSONS.find((lesson) => lesson.language === language)?.id ??
-      LESSONS[0].id;
+    selectedLessonId = LESSONS.find((lesson) => lesson.language === language)?.id ?? LESSONS[0].id;
 
     void resetTyping();
   }
@@ -287,22 +261,21 @@ function handleFocusKeydown(event: KeyboardEvent) {
   }
 
   function clearHistory() {
-  const confirmed = window.confirm(
-    'Bạn có chắc muốn xóa toàn bộ lịch sử luyện gõ không?',
-  );
+    const confirmed = window.confirm('Bạn có chắc muốn xóa toàn bộ lịch sử luyện gõ không?');
 
-  if (!confirmed) return;
+    if (!confirmed) return;
 
-  if (saveTypingHistory([])) {
-    history = [];
-    storageWarning = false;
-  } else {
-    storageWarning = true;
+    if (saveTypingHistory([])) {
+      history = [];
+      storageWarning = false;
+    } else {
+      storageWarning = true;
+    }
   }
-}
 
   onMount(() => {
     history = loadTypingHistory();
+    inputElement?.focus();
     window.addEventListener('focus', updateClock);
     document.addEventListener('visibilitychange', updateClock);
 
@@ -317,36 +290,23 @@ function handleFocusKeydown(event: KeyboardEvent) {
 <section class="trainer" class:focus-mode={focusMode}>
   <header class="trainer-header">
     <h2>Luyện gõ 10 ngón</h2>
-    <p>Chọn bài luyện và thời gian phù hợp để bắt đầu.</p>
+    <p>Chọn bài luyện và thời gian, rồi gõ trực tiếp trên đoạn văn.</p>
   </header>
-<div class="focus-controls">
-  <button
-    type="button"
-    class="focus-toggle"
-    aria-pressed={focusMode}
-    onclick={toggleFocusMode}
-  >
-    {focusMode
-      ? 'Thoát chế độ tập trung'
-      : 'Bật chế độ tập trung'}
-  </button>
+  <div class="focus-controls">
+    <button type="button" class="focus-toggle" aria-pressed={focusMode} onclick={toggleFocusMode}>
+      {focusMode ? 'Thoát chế độ tập trung' : 'Bật chế độ tập trung'}
+    </button>
 
-  {#if focusMode}
-    <span class="focus-hint">
-      Nhấp vào đoạn văn để gõ. Nhấn Esc để thoát.
-    </span>
-  {/if}
-</div>
+    {#if focusMode}
+      <span class="focus-hint">Nhấn Esc để thoát.</span>
+    {/if}
+  </div>
   <!-- Lựa chọn ngôn ngữ và bài luyện -->
   <div class="settings">
     <div class="field">
       <label for="language">Ngôn ngữ</label>
 
-      <select
-        id="language"
-        value={selectedLanguage}
-        onchange={changeLanguage}
-      >
+      <select id="language" value={selectedLanguage} onchange={changeLanguage}>
         <option value="vi">Tiếng Việt</option>
         <option value="en">English</option>
       </select>
@@ -355,11 +315,7 @@ function handleFocusKeydown(event: KeyboardEvent) {
     <div class="field">
       <label for="lesson">Bài luyện</label>
 
-      <select
-        id="lesson"
-        value={selectedLessonId}
-        onchange={changeLesson}
-      >
+      <select id="lesson" value={selectedLessonId} onchange={changeLesson}>
         {#each availableLessons as lesson (lesson.id)}
           <option value={lesson.id}>{lesson.title}</option>
         {/each}
@@ -404,44 +360,35 @@ function handleFocusKeydown(event: KeyboardEvent) {
   </div>
 
   <!-- Văn bản luyện gõ -->
-<div class="text-box">
-  <TypingText text={sampleText} typed={typedText} />
+  <div class="text-box">
+    <TypingText text={sampleText} typed={typedText} />
 
-  {#if focusMode}
-    <label for="typing-input" class="focus-target">
-      <span class="visually-hidden">
-        Nhấp vào văn bản để bắt đầu gõ
-      </span>
+    <label for="typing-input" class="typing-target">
+      <span class="visually-hidden"> Nhấp vào văn bản để bắt đầu gõ </span>
     </label>
-  {/if}
-</div>
-
-<!-- Bàn phím ảo hướng dẫn gõ 10 ngón -->
-{#if !focusMode}
-  <VirtualKeyboard nextCharacter={nextCharacter} />
-{/if}
-
-  <!-- Ô nhập văn bản -->
-<div class="input-section" class:focus-hidden={focusMode}>
-    <label for="typing-input">Nhập văn bản tại đây</label>
 
     <textarea
       bind:this={inputElement}
       id="typing-input"
-      rows="3"
+      class="typing-capture"
       value={typedText}
       oninput={handleInput}
+      onbeforeinput={handleBeforeInput}
+      ondrop={(event) => event.preventDefault()}
       onkeydown={handleFocusKeydown}
       oncompositionstart={handleCompositionStart}
       oncompositionend={handleCompositionEnd}
       onpaste={(event) => event.preventDefault()}
       disabled={status === 'finished'}
-      placeholder="Bắt đầu gõ để tính thời gian..."
       spellcheck={false}
       autocomplete="off"
-      autocapitalize="off"
-    ></textarea>
+      autocapitalize="off"></textarea>
   </div>
+
+  <!-- Bàn phím ảo hướng dẫn gõ 10 ngón -->
+  {#if !focusMode}
+    <VirtualKeyboard {nextCharacter} />
+  {/if}
 
   <!-- Tiến độ và nút làm lại -->
   <div class="bottom-bar">
@@ -451,9 +398,7 @@ function handleFocusKeydown(event: KeyboardEvent) {
       <span>Tiến độ: {metrics.typedChars}/{totalChars}</span>
     </div>
 
-    <button type="button" onclick={resetTyping}>
-      Làm lại
-    </button>
+    <button type="button" onclick={resetTyping}> Làm lại </button>
   </div>
 
   <!-- Kết quả -->
@@ -462,26 +407,24 @@ function handleFocusKeydown(event: KeyboardEvent) {
       <h3>Đã hết thời gian!</h3>
 
       <p>
-        Kết quả: {metrics.wpm} WPM —
-        Độ chính xác {metrics.accuracy}%
+        Kết quả: {metrics.wpm} WPM — Độ chính xác {metrics.accuracy}%
       </p>
     </div>
   {/if}
   {#if storageWarning}
-  <p class="storage-warning" role="alert">
-    Không thể lưu lịch sử vào trình duyệt.
-    Kết quả có thể mất khi tải lại trang.
-  </p>
-{/if}
+    <p class="storage-warning" role="alert">
+      Không thể lưu lịch sử vào trình duyệt. Kết quả có thể mất khi tải lại trang.
+    </p>
+  {/if}
 
-{#if !focusMode}
-  <TypingHistory
-    results={history}
-    lessonId={selectedLessonId}
-    durationSeconds={selectedDuration}
-    onClear={clearHistory}
-  />
-{/if}
+  {#if !focusMode}
+    <TypingHistory
+      results={history}
+      lessonId={selectedLessonId}
+      durationSeconds={selectedDuration}
+      onClear={clearHistory}
+    />
+  {/if}
 </section>
 
 <style>
@@ -605,49 +548,12 @@ function handleFocusKeydown(event: KeyboardEvent) {
   }
 
   .text-box {
+    position: relative;
     padding: var(--space-6);
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
-  }
-
-  .input-section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .input-section label {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-secondary);
-  }
-
-  textarea {
-    width: 100%;
-    padding: var(--space-4);
-    background: var(--color-surface);
-    color: var(--color-text);
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-md);
-    font: inherit;
-    font-size: var(--font-size-lg);
-    line-height: 1.6;
-    resize: vertical;
-    outline: none;
-  }
-
-  textarea:focus {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px var(--color-focus-ring);
-  }
-
-  textarea:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  textarea::placeholder {
-    color: var(--color-text-muted);
+    cursor: text;
   }
 
   .bottom-bar {
@@ -696,101 +602,88 @@ function handleFocusKeydown(event: KeyboardEvent) {
   }
 
   .storage-warning {
-  margin: 0;
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-error-soft);
-  color: var(--color-error);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-}
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-error-soft);
+    color: var(--color-error);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+  }
 
-
-/* =======================================
+  /* =======================================
    FOCUS MODE
 ======================================= */
 
-.trainer {
-  position: relative;
-}
+  .trainer {
+    position: relative;
+  }
 
-.focus-controls {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-}
+  .focus-controls {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
 
-.focus-toggle {
-  padding: var(--space-2) var(--space-4);
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  border: 1px solid var(--color-border);
-  font-size: var(--font-size-sm);
-}
+  .focus-toggle {
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+    font-size: var(--font-size-sm);
+  }
 
-.focus-toggle:hover:not(:disabled) {
-  background: var(--color-surface-hover);
-}
+  .focus-toggle:hover:not(:disabled) {
+    background: var(--color-surface-hover);
+  }
 
-.focus-toggle[aria-pressed='true'] {
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
-  border-color: var(--color-primary);
-}
+  .focus-toggle[aria-pressed='true'] {
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+  }
 
-.focus-hint {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-}
+  .focus-hint {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+  }
 
-.text-box {
-  display: block;
-  cursor: text;
-}
+  .trainer.focus-mode .settings,
+  .trainer.focus-mode .duration-picker {
+    display: none;
+  }
 
-.trainer.focus-mode .settings,
-.trainer.focus-mode .duration-picker {
-  display: none;
-}
+  .trainer.focus-mode .text-box {
+    min-height: 170px;
+    border-color: var(--color-primary);
+    transition: border-color var(--transition-fast);
+  }
 
-.trainer.focus-mode .text-box {
-  min-height: 170px;
-  border-color: var(--color-primary);
-  transition: border-color var(--transition-fast);
-}
+  .typing-target {
+    position: absolute;
+    inset: 0;
+    cursor: text;
+  }
 
-/* Ẩn về thị giác nhưng giữ textarea có thể focus. */
-.input-section.focus-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  white-space: nowrap;
-  clip-path: inset(50%);
-  border: 0;
-}
+  .typing-capture {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    white-space: nowrap;
+    clip-path: inset(50%);
+    border: 0;
+  }
 
-
-.text-box {
-  position: relative;
-}
-
-.focus-target {
-  position: absolute;
-  inset: 0;
-  cursor: text;
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 </style>

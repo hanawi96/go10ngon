@@ -1,4 +1,5 @@
 ---
+import ThemeToggle from '../components/ThemeToggle.astro';
 import TypingTrainer from '../features/typing/TypingTrainer.svelte';
 import '../styles/global.css';
 ---
@@ -6,6 +7,7 @@ import '../styles/global.css';
 <!doctype html>
 <html lang="vi">
   <head>
+    <ThemeToggle boot />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Go10Ngon - Luyện gõ 10 ngón</title>
@@ -14,14 +16,13 @@ import '../styles/global.css';
 
   <body>
     <main>
+      <ThemeToggle />
       <h1>Go10Ngon</h1>
       <p>Website luyện gõ 10 ngón.</p>
       <TypingTrainer client:load />
       <nav class="home-navigation" aria-label="Chọn chế độ luyện gõ">
-  <a href="/learn/">
-    Học gõ 10 ngón theo cấp độ →
-  </a>
-</nav>
+        <a href="/learn/">Học gõ 10 ngón theo cấp độ →</a>
+      </nav>
     </main>
   </body>
 </html>

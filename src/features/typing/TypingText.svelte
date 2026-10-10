@@ -15,39 +15,106 @@
   // Số ký tự hiển thị tối đa cùng lúc.
   const VISIBLE_SIZE = 260;
 
+  // Con trỏ ngắn hơn thân chữ một chút cho khỏi đụng dòng trên.
+  const CARET_INSET = 3;
+
   let expectedChars = $derived(splitGraphemes(text));
   let typedChars = $derived(splitGraphemes(typed));
 
   // Tự chuyển vùng khi người dùng gõ thêm.
-  let visibleStart = $derived(
-    Math.floor(typedChars.length / PAGE_SIZE) * PAGE_SIZE,
-  );
+  let visibleStart = $derived(Math.floor(typedChars.length / PAGE_SIZE) * PAGE_SIZE);
 
-  let visibleChars = $derived(
-    expectedChars.slice(
-      visibleStart,
-      visibleStart + VISIBLE_SIZE,
-    ),
-  );
+  let visibleChars = $derived(expectedChars.slice(visibleStart, visibleStart + VISIBLE_SIZE));
+
+  let textElement = $state<HTMLDivElement>();
+  let caretElement = $state<HTMLSpanElement>();
+  let placed = false;
+  let lastWindow = -1;
+
+  // Một con trỏ duy nhất trượt tới ký tự kế tiếp.
+  // Đổi trang văn bản hoặc đổi cỡ khung thì đặt thẳng, không trượt xuyên màn hình.
+  function placeCaret(forceSnap = false) {
+    const root = textElement;
+    const caret = caretElement;
+    if (!root || !caret) return;
+
+    const active = root.querySelector<HTMLElement>('.character.active');
+    const characters = root.querySelectorAll<HTMLElement>('.character');
+    const target = active ?? characters[characters.length - 1];
+
+    if (!target) {
+      caret.hidden = true;
+      return;
+    }
+
+    caret.hidden = false;
+
+    const rootRect = root.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const x = active ? targetRect.left - rootRect.left - 1 : targetRect.right - rootRect.left;
+    const y = targetRect.top - rootRect.top + CARET_INSET;
+    const height = Math.max(2, targetRect.height - CARET_INSET * 2);
+    const snap = forceSnap || !placed || lastWindow !== visibleStart;
+
+    lastWindow = visibleStart;
+    placed = true;
+
+    if (snap) {
+      caret.style.transition = 'none';
+    }
+
+    caret.style.height = `${height}px`;
+    caret.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+
+    if (snap) {
+      void caret.offsetWidth;
+      caret.style.transition = '';
+    }
+  }
+
+  $effect(() => {
+    void text;
+    void typed;
+    void textElement;
+    void caretElement;
+    placeCaret();
+  });
+
+  $effect(() => {
+    const root = textElement;
+    if (!root) return;
+
+    const observer = new ResizeObserver(() => {
+      placeCaret();
+    });
+
+    observer.observe(root);
+
+    return () => {
+      observer.disconnect();
+    };
+  });
 </script>
 
-<div class="typing-text">
+<div class="typing-text" bind:this={textElement}>
   {#each visibleChars as character, index (visibleStart + index)}
     {@const absoluteIndex = visibleStart + index}
 
     <span
       class="character"
-      class:correct={absoluteIndex < typedChars.length &&
-        typedChars[absoluteIndex] === character}
-      class:incorrect={absoluteIndex < typedChars.length &&
-        typedChars[absoluteIndex] !== character}
+      class:correct={absoluteIndex < typedChars.length && typedChars[absoluteIndex] === character}
+      class:incorrect={absoluteIndex < typedChars.length && typedChars[absoluteIndex] !== character}
       class:active={absoluteIndex === typedChars.length}
-    >{character === ' ' ? '\u00a0' : character}</span>
+      >{character === ' ' ? '\u00a0' : character}</span
+    >
   {/each}
+
+  <span class="caret" bind:this={caretElement} aria-hidden="true"></span>
 </div>
 
 <style>
   .typing-text {
+    position: relative;
     font-size: clamp(22px, 3vw, 30px);
     line-height: 1.9;
     letter-spacing: 0.3px;
@@ -57,7 +124,6 @@
   }
 
   .character {
-    position: relative;
     color: var(--color-text-muted);
     border-radius: var(--radius-sm);
   }
@@ -71,16 +137,36 @@
     background: var(--color-error-soft);
   }
 
-  .character.active::before {
-    content: '';
-
+  .caret {
     position: absolute;
-    left: -1px;
-    top: 3px;
-    bottom: 3px;
+    top: 0;
+    left: 0;
     width: 2px;
-
+    pointer-events: none;
     background: var(--color-primary);
     border-radius: var(--radius-full);
+
+    /* Ease-out riêng cho con trỏ: rời ký tự ngay rồi trượt tới chỗ mới.
+       Token chuyển động chung bắt đầu chậm, con trỏ sẽ trễ so với phím. */
+    transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    animation: typing-caret-blink 1s step-end infinite;
+  }
+
+  @keyframes typing-caret-blink {
+    0%,
+    49% {
+      opacity: 1;
+    }
+
+    50%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .caret {
+      animation: none;
+    }
   }
 </style>

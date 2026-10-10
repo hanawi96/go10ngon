@@ -1,0 +1,105 @@
+---
+interface Props {
+  boot?: boolean;
+}
+
+const { boot = false } = Astro.props;
+---
+
+{boot ? (
+  <script is:inline>
+    try {
+      const savedTheme = localStorage.getItem('go10ngon:theme');
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        document.documentElement.dataset.theme = savedTheme;
+      }
+    } catch {
+      // Trình duyệt chặn lưu trữ thì giữ giao diện tối.
+    }
+  </script>
+) : (
+  <div class="theme-toggle-bar">
+    <button
+      id="theme-toggle"
+      class="theme-toggle"
+      type="button"
+      aria-pressed="false"
+      aria-label="Chuyển sang giao diện sáng"
+    >
+      <span class="to-light">Sáng</span>
+      <span class="to-dark">Tối</span>
+    </button>
+    <script is:inline>
+      (function () {
+        const storageKey = 'go10ngon:theme';
+        const root = document.documentElement;
+        const button = document.getElementById('theme-toggle');
+        if (!button) return;
+
+        function currentTheme() {
+          return root.dataset.theme === 'light' ? 'light' : 'dark';
+        }
+
+        function syncButton() {
+          const isLight = currentTheme() === 'light';
+          button.setAttribute('aria-pressed', isLight ? 'true' : 'false');
+          button.setAttribute(
+            'aria-label',
+            isLight ? 'Chuyển sang giao diện tối' : 'Chuyển sang giao diện sáng',
+          );
+        }
+
+        syncButton();
+
+        button.addEventListener('click', function () {
+          const nextTheme = currentTheme() === 'light' ? 'dark' : 'light';
+          root.classList.add('theme-changing');
+          void root.offsetWidth;
+          root.dataset.theme = nextTheme;
+          syncButton();
+          window.setTimeout(function () {
+            root.classList.remove('theme-changing');
+          }, 160);
+
+          try {
+            localStorage.setItem(storageKey, nextTheme);
+          } catch {
+            // Theme vẫn đổi trong phiên này khi không lưu được.
+          }
+        });
+      })();
+    </script>
+  </div>
+)}
+
+<style>
+  .theme-toggle-bar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: var(--space-4);
+  }
+
+  .theme-toggle {
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+    font-size: var(--font-size-sm);
+  }
+
+  .theme-toggle:hover:not(:disabled) {
+    background: var(--color-surface-hover);
+  }
+
+  .to-dark {
+    display: none;
+  }
+
+  :global(html[data-theme='light']) .to-light {
+    display: none;
+  }
+
+  :global(html[data-theme='light']) .to-dark {
+    display: inline;
+  }
+</style>
