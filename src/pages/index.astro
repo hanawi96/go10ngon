@@ -1,7 +1,5 @@
 ---
 import ThemeToggle from '../components/ThemeToggle.astro';
-import TypingSettingsBoot from '../components/TypingSettingsBoot.astro';
-import TypingTrainer from '../features/typing/TypingTrainer.svelte';
 import '../styles/global.css';
 ---
 
@@ -9,11 +7,13 @@ import '../styles/global.css';
 <html lang="vi">
   <head>
     <ThemeToggle boot />
-    <TypingSettingsBoot />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Go10Ngon - Luyện gõ 10 ngón</title>
-    <meta name="description" content="Luyện gõ 10 ngón trực tuyến miễn phí." />
+    <meta
+      name="description"
+      content="Học gõ 10 ngón từ cơ bản, hoặc kiểm tra tốc độ và độ chính xác ngay."
+    />
   </head>
 
   <body>
@@ -23,13 +23,131 @@ import '../styles/global.css';
           <a href="/">Go10Ngon</a>
         </h1>
         <div class="site-tools">
-          <a class="site-link" href="/learn/">
-            Học theo cấp độ
-          </a>
           <ThemeToggle />
         </div>
       </header>
-      <TypingTrainer client:load />
+
+      <section class="home">
+        <div class="choice-grid">
+          <a class="choice-card" href="/learn/">
+            <svg
+              class="choice-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M2 10 12 5l10 5-10 5L2 10z"></path>
+              <path d="M6 12.5V17c0 1.4 2.7 3 6 3s6-1.6 6-3v-4.5"></path>
+            </svg>
+            <div class="choice-copy">
+              <h2>Tôi muốn học gõ 10 ngón</h2>
+              <p>Dành cho người mới, có hướng dẫn từng ngón tay và bài học từ dễ đến khó.</p>
+            </div>
+            <span class="choice-action">Đi tới bài học đầu tiên →</span>
+          </a>
+
+          <a class="choice-card" href="/kiem-tra/">
+            <svg
+              class="choice-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="14" r="7"></circle>
+              <path d="M12 14V10.5"></path>
+              <path d="M9 3h6"></path>
+              <path d="M12 3v2"></path>
+            </svg>
+            <div class="choice-copy">
+              <h2>Tôi muốn kiểm tra tốc độ</h2>
+              <p>Dành cho người muốn kiểm tra WPM và độ chính xác ngay lập tức.</p>
+            </div>
+            <span class="choice-action">Bắt đầu kiểm tra →</span>
+          </a>
+        </div>
+      </section>
     </main>
   </body>
 </html>
+
+<style>
+  .home {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .choice-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+    width: 100%;
+  }
+
+  .choice-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .choice-card:hover {
+    border-color: var(--color-primary);
+    background: var(--color-surface-hover);
+  }
+
+  .choice-card:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+  }
+
+  .choice-icon {
+    width: 28px;
+    height: 28px;
+    color: var(--color-text-secondary);
+  }
+
+  .choice-copy {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .choice-copy h2 {
+    margin: 0;
+    font-size: var(--font-size-xl);
+    line-height: 1.3;
+  }
+
+  .choice-copy p {
+    margin: 0;
+    color: var(--color-text-muted);
+  }
+
+  .choice-action {
+    font-weight: 600;
+  }
+
+  .choice-card:hover .choice-action {
+    color: var(--color-primary);
+  }
+
+  @media (max-width: 700px) {
+    .choice-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

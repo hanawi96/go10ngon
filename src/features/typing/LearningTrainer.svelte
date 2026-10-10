@@ -4,12 +4,22 @@
   import TypingText from './TypingText.svelte';
   import TypingSettings from './TypingSettings.svelte';
   import VirtualKeyboard from './VirtualKeyboard.svelte';
+  import CapsLockNotice from './CapsLockNotice.svelte';
 
   import { hydrateTypingSettings, subscribeTypingSettings } from './typing-settings';
   import { playCommittedTypingSound } from './typing-sound';
 
   import { LEARNING_LESSONS } from './learning-lessons';
-  import { isTypingTextComplete, limitTypingText, splitGraphemes } from './typing-engine';
+  import {
+    TYPING_IME_SLACK,
+    isTypingCaretKey,
+    isTypingEditAtEnd,
+    isTypingTextComplete,
+    limitTypingText,
+    normalizeTypingText,
+    shouldSnapTypingCaret,
+    splitGraphemes,
+  } from './typing-engine';
   import { calculateTypingMetrics } from './metrics';
 
   const STORAGE_KEY = 'go10ngon:learning-progress:v1';
@@ -29,7 +39,11 @@
 
   let metrics = $derived(calculateTypingMetrics(currentLesson.text, typedText, 0));
 
-  let progress = $derived(Math.round((metrics.typedChars / expectedChars.length) * 100));
+  let progress = $derived(
+    expectedChars.length === 0
+      ? 0
+      : Math.min(100, Math.round((metrics.typedChars * 100) / expectedChars.length)),
+  );
 
   let isComplete = $derived(isTypingTextComplete(currentLesson.text, typedText));
 
@@ -86,24 +100,29 @@
   }
 
   function updateTyping(value: string) {
-    if (isComplete) return;
+    if (isComplete) {
+      markLessonComplete();
+      return;
+    }
 
-    // Giới hạn theo ký tự Unicode hoàn chỉnh.
-    const nextText = limitTypingText(value, expectedChars.length);
+    // Chừa vài ký tự cho phím dấu Telex/VNI trước khi bộ gõ nuốt.
+    const nextText = limitTypingText(value, expectedChars.length + TYPING_IME_SLACK);
 
     if (nextText !== typedText) {
       playCommittedTypingSound(typedText, nextText, currentLesson.text);
-      typedText = nextText;
     }
 
-    // Đồng bộ giá trị thực tế của textarea.
-    if (inputElement.value !== nextText) {
-      inputElement.value = nextText;
-    }
+    typedText = nextText;
 
     if (isTypingTextComplete(currentLesson.text, nextText)) {
       markLessonComplete();
     }
+
+    if (normalizeTypingText(inputElement.value) === nextText) {
+      return;
+    }
+
+    inputElement.value = nextText;
   }
 
   function handleInput(event: Event) {
@@ -119,7 +138,17 @@
   }
 
   function handleBeforeInput(event: InputEvent) {
-    if (event.inputType.startsWith('insertFromPaste') || event.inputType === 'insertFromDrop') {
+    const target = event.currentTarget as HTMLTextAreaElement;
+    const length = target.value.length;
+
+    if (
+      !isTypingEditAtEnd(
+        target.value,
+        target.selectionStart ?? length,
+        target.selectionEnd ?? length,
+        event.inputType,
+      )
+    ) {
       event.preventDefault();
     }
   }
@@ -141,9 +170,32 @@
     }
   }
 
+  function focusTypingCaret() {
+    const caret = inputElement.value.length;
+    inputElement.setSelectionRange(caret, caret);
+  }
+
   function handleFocusKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape' && focusMode && !isComposing) {
+    if (isComposing || event.isComposing) return;
+
+    if (event.key === 'Escape' && focusMode) {
       focusMode = false;
+      return;
+    }
+
+    if (isTypingCaretKey(event.key, event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      return;
+    }
+
+    if (
+      shouldSnapTypingCaret(
+        inputElement.value,
+        inputElement.selectionStart ?? inputElement.value.length,
+        inputElement.selectionEnd ?? inputElement.value.length,
+      )
+    ) {
+      focusTypingCaret();
     }
   }
 
@@ -224,6 +276,8 @@
     <div class="progress-fill" style:width={`${progress}%`}></div>
   </div>
 
+  <CapsLockNotice />
+
   <div class="stage">
     <label for="learning-input" class="typing-target">
       <span class="visually-hidden"> Nhấp vào văn bản để bắt đầu gõ </span>
@@ -240,6 +294,7 @@
         onbeforeinput={handleBeforeInput}
         ondrop={(event) => event.preventDefault()}
         onkeydown={handleFocusKeydown}
+        onfocus={focusTypingCaret}
         oncompositionstart={() => (isComposing = true)}
         oncompositionend={handleCompositionEnd}
         onpaste={(event) => event.preventDefault()}

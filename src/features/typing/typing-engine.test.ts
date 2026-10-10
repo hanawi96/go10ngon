@@ -7,6 +7,10 @@ import {
   isTypingTextComplete,
   groupTypingTokens,
   nextTypingPageEnd,
+  isTypingEditAtEnd,
+  isTypingCaretKey,
+  shouldSnapTypingCaret,
+  readCapsLock,
 } from './typing-engine';
 
 describe('Go10Ngon Typing Engine', () => {
@@ -79,5 +83,34 @@ describe('Go10Ngon Typing Engine', () => {
   it('xử lý chuỗi rỗng', () => {
     expect(splitGraphemes('')).toEqual([]);
     expect(normalizeTypingText('')).toBe('');
+  });
+
+  it('chỉ nhận thao tác ở cuối văn bản đang gõ', () => {
+    expect(isTypingEditAtEnd('abcd', 4, 4, 'insertText')).toBe(true);
+    expect(isTypingEditAtEnd('abcd', 3, 4, 'insertText')).toBe(true);
+    expect(isTypingEditAtEnd('abcd', 2, 2, 'insertText')).toBe(false);
+    expect(isTypingEditAtEnd('abcd', 4, 4, 'insertFromPaste')).toBe(false);
+    expect(isTypingEditAtEnd('abcd', 1, 2, 'insertCompositionText')).toBe(true);
+    expect(isTypingCaretKey('ArrowLeft', false)).toBe(true);
+    expect(isTypingCaretKey('Backspace', false)).toBe(false);
+    expect(isTypingCaretKey('a', true)).toBe(true);
+    expect(isTypingCaretKey('a', false)).toBe(false);
+  });
+
+  it('cho Telex và VNI sửa nguyên âm trong từ cuối', () => {
+    expect(isTypingEditAtEnd('ngay', 2, 3, 'insertText')).toBe(true);
+    expect(isTypingEditAtEnd('xin ngay', 6, 7, 'insertReplacementText')).toBe(true);
+    expect(isTypingEditAtEnd('xin ngay', 1, 2, 'insertText')).toBe(false);
+    expect(isTypingEditAtEnd('ngay', 2, 2, 'deleteContentBackward')).toBe(false);
+    expect(shouldSnapTypingCaret('ngay', 4, 4)).toBe(false);
+    expect(shouldSnapTypingCaret('ngay', 2, 2)).toBe(true);
+    expect(shouldSnapTypingCaret('ngay', 2, 3)).toBe(false);
+    expect(shouldSnapTypingCaret('xin ngay', 1, 2)).toBe(true);
+  });
+
+  it('nhận biết Caps Lock từ sự kiện bàn phím', () => {
+    expect(readCapsLock({ getModifierState: (key) => key === 'CapsLock' })).toBe(true);
+    expect(readCapsLock({ getModifierState: (key) => key === 'Shift' })).toBe(false);
+    expect(readCapsLock({})).toBe(false);
   });
 });

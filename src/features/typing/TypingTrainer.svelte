@@ -3,23 +3,34 @@
   import TypingText from './TypingText.svelte';
   import TypingHistory from './TypingHistory.svelte';
   import TypingSettings from './TypingSettings.svelte';
+  import CapsLockNotice from './CapsLockNotice.svelte';
+  import TypingResultPanel from './TypingResultPanel.svelte';
 
   import { MAX_RESULTS, loadTypingHistory, saveTypingHistory, type TypingResult } from './storage';
   import { hydrateTypingSettings, subscribeTypingSettings } from './typing-settings';
   import { playCommittedTypingSound } from './typing-sound';
   import VirtualKeyboard from './VirtualKeyboard.svelte';
 
-  import { normalizeTypingText, splitGraphemes } from './typing-engine';
+  import {
+    TYPING_IME_SLACK,
+    isTypingCaretKey,
+    isTypingEditAtEnd,
+    normalizeTypingText,
+    shouldSnapTypingCaret,
+    splitGraphemes,
+  } from './typing-engine';
 
   import { calculateTypingMetrics } from './metrics';
+  import { SPEED_MARK_SECONDS, findPreviousWpm, mistakeDrillText } from './result-summary';
   import { LESSONS, buildContinuousLessonText, type LessonLanguage } from './lessons';
 
-  const DURATIONS = [15, 30, 60, 120] as const;
+  // 5 giây chỉ có khi chạy local, để xem màn kết quả nhanh. Bản build không có mốc này.
+  const PREVIEW_SECONDS = 5;
+  const DURATIONS = import.meta.env.DEV ? [PREVIEW_SECONDS, 15, 30, 60, 120] : [15, 30, 60, 120];
 
-  type DurationSeconds = (typeof DURATIONS)[number];
   type Status = 'idle' | 'running' | 'finished';
 
-  let selectedDuration = $state<DurationSeconds>(60);
+  let selectedDuration = $state(60);
   let selectedLanguage = $state<LessonLanguage>('vi');
   let selectedLessonId = $state('vi-basic');
   // Số đoạn văn đã được bổ sung trong phiên luyện.
@@ -36,8 +47,26 @@
   let showKeyboard = $state(true);
   let history = $state<TypingResult[]>([]);
   let storageWarning = $state(false);
+  let drillText = $state<string | null>(null);
+  let finishedView = $state<{
+    wpm: number;
+    accuracy: number;
+    delta: number | null;
+    marks: number[];
+    markSeconds: number;
+    mistakeText: string;
+    languageLabel: string;
+    durationSeconds: number;
+  } | null>(null);
 
-  let inputElement: HTMLTextAreaElement;
+  let speedMarks: number[] = [];
+  let nextMarkMs = SPEED_MARK_SECONDS * 1000;
+
+  function markStepSeconds(): number {
+    return selectedDuration === PREVIEW_SECONDS ? 1 : SPEED_MARK_SECONDS;
+  }
+
+  let inputElement = $state<HTMLTextAreaElement | null>(null);
   let startedAt: number | null = null;
   let timerId: number | undefined;
   let isComposing = false;
@@ -49,7 +78,9 @@
     LESSONS.find((lesson) => lesson.id === selectedLessonId) ?? LESSONS[0],
   );
 
-  let sampleText = $derived(buildContinuousLessonText(currentLesson, continuationCount));
+  let sampleText = $derived(
+    drillText ?? buildContinuousLessonText(currentLesson, continuationCount),
+  );
   let totalChars = $derived(splitGraphemes(sampleText).length);
 
   // Thời gian và thống kê
@@ -76,18 +107,54 @@
     }
   }
 
+  function clearSpeedMarks() {
+    speedMarks = [];
+    nextMarkMs = markStepSeconds() * 1000;
+  }
+
+  function captureSpeedMarks() {
+    if (nextMarkMs > elapsedMs) return;
+
+    const stepMs = markStepSeconds() * 1000;
+    const wpm = calculateTypingMetrics(sampleText, typedText, elapsedMs).wpm;
+
+    while (nextMarkMs <= elapsedMs && nextMarkMs <= durationMs) {
+      speedMarks.push(wpm);
+      nextMarkMs += stepMs;
+    }
+  }
+
   function finishTyping() {
     if (status === 'finished') return;
+
+    const finalMetrics = calculateTypingMetrics(sampleText, typedText, elapsedMs);
+    const markSeconds = markStepSeconds();
+    const expectedMarks = selectedDuration / markSeconds;
+
+    while (speedMarks.length < expectedMarks) {
+      speedMarks.push(finalMetrics.wpm);
+    }
+
+    const previousWpm = findPreviousWpm(history, currentLesson.id, selectedDuration);
+
+    finishedView = {
+      wpm: finalMetrics.wpm,
+      accuracy: finalMetrics.accuracy,
+      delta: drillText === null && previousWpm !== null ? finalMetrics.wpm - previousWpm : null,
+      marks: speedMarks.slice(),
+      markSeconds,
+      mistakeText: mistakeDrillText(sampleText, typedText),
+      languageLabel: selectedLanguage === 'vi' ? 'Tiếng Việt' : 'English',
+      durationSeconds: selectedDuration,
+    };
 
     status = 'finished';
     stopTimer();
 
-    // Không lưu phiên chưa bắt đầu.
-    if (startedAt === null || typedText.length === 0) {
+    // Bài luyện lỗi không ghi vào lịch sử tốc độ.
+    if (drillText !== null || startedAt === null || typedText.length === 0) {
       return;
     }
-
-    const finalMetrics = calculateTypingMetrics(sampleText, typedText, elapsedMs);
 
     const result: TypingResult = {
       id: crypto.randomUUID(),
@@ -114,6 +181,7 @@
     }
 
     elapsedMs = Math.min(performance.now() - startedAt, durationMs);
+    captureSpeedMarks();
 
     if (elapsedMs < durationMs) {
       return false;
@@ -133,19 +201,19 @@
   }
 
   function updateTyping(value: string) {
-    if (status === 'finished') return;
+    if (status === 'finished' || !inputElement) return;
 
     const expected = sampleText;
     const normalized = normalizeTypingText(value);
     const inputChars = splitGraphemes(normalized);
 
     // Khi sắp gõ hết văn bản, tự động nối thêm đoạn mới.
-    if (inputChars.length >= totalChars - LOAD_AHEAD) {
+    if (drillText === null && inputChars.length >= totalChars - LOAD_AHEAD) {
       continuationCount += 1;
     }
 
-    // Không cho nhập vượt quá lượng văn bản hiện có.
-    const nextText = inputChars.slice(0, totalChars).join('');
+    // Chừa vài ký tự cho phím dấu Telex/VNI trước khi bộ gõ nuốt.
+    const nextText = inputChars.slice(0, totalChars + TYPING_IME_SLACK).join('');
 
     // Bắt đầu tính giờ khi nhập ký tự đầu tiên.
     if (startedAt === null && nextText.length > 0) {
@@ -164,9 +232,12 @@
 
     typedText = nextText;
 
-    if (inputElement.value !== nextText) {
-      inputElement.value = nextText;
+    // Chuỗi đã khớp thì không ghi đè. Ghi đè sẽ cắt thao tác Telex/VNI.
+    if (normalizeTypingText(inputElement.value) === nextText) {
+      return;
     }
+
+    inputElement.value = nextText;
 
     // Không kết thúc khi gõ hết đoạn văn:
     // phiên luyện chỉ kết thúc khi hết thời gian.
@@ -175,7 +246,7 @@
   function handleInput(event: Event) {
     const inputEvent = event as InputEvent;
 
-    // Không cập nhật khi IME vẫn đang ghép ký tự.
+    // Chưa chốt khi bộ gõ còn đang ghép dấu.
     if (isComposing || inputEvent.isComposing) {
       return;
     }
@@ -185,15 +256,29 @@
     updateTyping(target.value);
   }
 
-  // Không cho dán hoặc kéo thả văn bản vào bài kiểm tra.
+  // Gõ thêm ở cuối, hoặc để Telex/VNI thay nguyên âm trong từ cuối.
   function handleBeforeInput(event: InputEvent) {
-    if (event.inputType.startsWith('insertFromPaste') || event.inputType === 'insertFromDrop') {
+    const target = event.currentTarget as HTMLTextAreaElement;
+    const length = target.value.length;
+
+    if (
+      !isTypingEditAtEnd(
+        target.value,
+        target.selectionStart ?? length,
+        target.selectionEnd ?? length,
+        event.inputType,
+      )
+    ) {
       event.preventDefault();
     }
   }
 
   function handleCompositionStart() {
     isComposing = true;
+
+    if (startedAt === null && status !== 'finished') {
+      startTimer();
+    }
   }
 
   function handleCompositionEnd(event: CompositionEvent) {
@@ -214,17 +299,47 @@
     }
   }
 
+  function focusTypingCaret() {
+    if (!inputElement) return;
+
+    const caret = inputElement.value.length;
+    inputElement.setSelectionRange(caret, caret);
+  }
+
   function handleFocusKeydown(event: KeyboardEvent) {
+    if (isComposing || event.isComposing) return;
+
     // Nhấn Esc để thoát Focus Mode.
-    // Không can thiệp khi bộ gõ tiếng Việt đang xử lý IME.
-    if (event.key === 'Escape' && focusMode && !isComposing) {
+    if (event.key === 'Escape' && focusMode) {
       focusMode = false;
+      return;
+    }
+
+    if (isTypingCaretKey(event.key, event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      return;
+    }
+
+    if (!inputElement) return;
+
+    // Con trỏ đứng giữa thì đưa về cuối. Vùng bôi của bộ gõ thì giữ nguyên.
+    if (
+      shouldSnapTypingCaret(
+        inputElement.value,
+        inputElement.selectionStart ?? inputElement.value.length,
+        inputElement.selectionEnd ?? inputElement.value.length,
+      )
+    ) {
+      focusTypingCaret();
     }
   }
 
-  async function resetTyping() {
+  async function resetTyping(nextDrill: string | null = null) {
     stopTimer();
+    drillText = nextDrill;
     continuationCount = 0;
+    clearSpeedMarks();
+    finishedView = null;
 
     startedAt = null;
     isComposing = false;
@@ -235,11 +350,20 @@
 
     await tick();
 
+    if (!inputElement) return;
+
     inputElement.value = '';
     inputElement.focus();
   }
 
-  function changeDuration(duration: DurationSeconds) {
+  function practiceMistakes() {
+    const text = finishedView?.mistakeText ?? '';
+    if (!text) return;
+
+    void resetTyping(text);
+  }
+
+  function changeDuration(duration: number) {
     if (selectedDuration === duration) return;
 
     selectedDuration = duration;
@@ -330,6 +454,7 @@
               type="button"
               class="duration-button"
               aria-pressed={selectedDuration === seconds}
+              title={seconds === PREVIEW_SECONDS ? 'Chỉ hiện khi chạy local' : undefined}
               onclick={() => changeDuration(seconds)}
             >
               {seconds}s
@@ -358,62 +483,73 @@
     </div>
   </div>
 
-  <p class="stats-line">
-    <span><strong>{metrics.wpm}</strong> WPM</span>
-    <span><strong>{metrics.accuracy}%</strong> chính xác</span>
-    <span><strong>{remainingSeconds}s</strong> còn lại</span>
-  </p>
+  {#if status !== 'finished'}
+    <p class="stats-line">
+      <span><strong>{metrics.wpm}</strong> WPM</span>
+      <span><strong>{metrics.accuracy}%</strong> chính xác</span>
+      <span><strong>{remainingSeconds}s</strong> còn lại</span>
+    </p>
+  {/if}
 
-  <div class="stage">
-    <label for="typing-input" class="typing-target">
-      <span class="visually-hidden"> Nhấp vào văn bản để bắt đầu gõ </span>
-    </label>
-    <div class="text-box">
-      <TypingText text={sampleText} typed={typedText} />
+  <CapsLockNotice />
 
-      <textarea
-        bind:this={inputElement}
-        id="typing-input"
-        class="typing-capture"
-        value={typedText}
-        oninput={handleInput}
-        onbeforeinput={handleBeforeInput}
-        ondrop={(event) => event.preventDefault()}
-        onkeydown={handleFocusKeydown}
-        oncompositionstart={handleCompositionStart}
-        oncompositionend={handleCompositionEnd}
-        onpaste={(event) => event.preventDefault()}
-        disabled={status === 'finished'}
-        spellcheck={false}
-        autocomplete="off"
-        autocapitalize="off"></textarea>
-    </div>
+  <div class="stage" class:finished={status === 'finished'}>
+    {#if status === 'finished' && finishedView}
+      <TypingResultPanel
+        languageLabel={finishedView.languageLabel}
+        durationSeconds={finishedView.durationSeconds}
+        wpm={finishedView.wpm}
+        accuracy={finishedView.accuracy}
+        delta={finishedView.delta}
+        marks={finishedView.marks}
+        markSeconds={finishedView.markSeconds}
+        mistakeText={finishedView.mistakeText}
+        onRetry={() => resetTyping(null)}
+        onPractice={practiceMistakes}
+      />
+    {:else}
+      <label for="typing-input" class="typing-target">
+        <span class="visually-hidden"> Nhấp vào văn bản để bắt đầu gõ </span>
+      </label>
+      <div class="text-box">
+        <TypingText text={sampleText} typed={typedText} />
+
+        <textarea
+          bind:this={inputElement}
+          id="typing-input"
+          class="typing-capture"
+          value={typedText}
+          oninput={handleInput}
+          onbeforeinput={handleBeforeInput}
+          ondrop={(event) => event.preventDefault()}
+          onkeydown={handleFocusKeydown}
+          onfocus={focusTypingCaret}
+          oncompositionstart={handleCompositionStart}
+          oncompositionend={handleCompositionEnd}
+          onpaste={(event) => event.preventDefault()}
+          disabled={status === 'finished'}
+          spellcheck={false}
+          autocomplete="off"
+          autocapitalize="off"></textarea>
+      </div>
+    {/if}
   </div>
 
   <!-- Bàn phím ảo hướng dẫn gõ 10 ngón -->
-  {#if showKeyboard && !focusMode}
+  {#if showKeyboard && !focusMode && status !== 'finished'}
     <VirtualKeyboard {nextCharacter} />
   {/if}
 
   <!-- Tiến độ và nút làm lại -->
-  <div class="bottom-bar">
-    <div class="progress">
-      <span>Đúng: {metrics.correctChars}</span>
-      <span>Sai: {metrics.incorrectChars}</span>
-      <span>Tiến độ: {metrics.typedChars}/{totalChars}</span>
-    </div>
+  {#if status !== 'finished'}
+    <div class="bottom-bar">
+      <div class="progress">
+        <span>Đúng: {metrics.correctChars}</span>
+        <span>Sai: {metrics.incorrectChars}</span>
+        <span>Tiến độ: {metrics.typedChars}/{totalChars}</span>
+      </div>
 
-    <button type="button" class="restart" onclick={resetTyping}>Làm lại</button>
-  </div>
-
-  <!-- Kết quả -->
-  {#if status === 'finished'}
-    <div class="result" role="status">
-      <h3>Đã hết thời gian!</h3>
-
-      <p>
-        Kết quả: {metrics.wpm} WPM — Độ chính xác {metrics.accuracy}%
-      </p>
+      <button type="button" class="restart" onclick={() => resetTyping(null)}>Làm lại</button>
     </div>
   {/if}
   {#if storageWarning}
@@ -532,6 +668,11 @@
     min-height: clamp(220px, 36vh, 460px);
   }
 
+  .stage.finished {
+    align-items: flex-start;
+    min-height: 0;
+  }
+
   .text-box {
     position: relative;
     width: 100%;
@@ -542,21 +683,6 @@
   .progress {
     font-size: var(--font-size-sm);
     color: var(--color-text-muted);
-  }
-
-  .result {
-    padding: var(--space-5);
-    background: var(--color-success-soft);
-    border-radius: var(--radius-md);
-    color: var(--color-success);
-  }
-
-  .result h3 {
-    margin: 0 0 var(--space-2);
-  }
-
-  .result p {
-    margin: 0;
   }
 
   @media (max-width: 600px) {

@@ -1,0 +1,39 @@
+---
+import ThemeToggle from '../components/ThemeToggle.astro';
+import TypingSettingsBoot from '../components/TypingSettingsBoot.astro';
+import TypingTrainer from '../features/typing/TypingTrainer.svelte';
+import '../styles/global.css';
+---
+
+<!doctype html>
+<html lang="vi">
+  <head>
+    <ThemeToggle boot />
+    <TypingSettingsBoot />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kiểm tra tốc độ - Go10Ngon</title>
+    <meta
+      name="description"
+      content="Kiểm tra tốc độ gõ và độ chính xác WPM trực tuyến, miễn phí."
+    />
+  </head>
+
+  <body>
+    <main>
+      <header class="site-header">
+        <h1 class="site-mark">
+          <a href="/">Go10Ngon</a>
+        </h1>
+        <div class="site-tools">
+          <a class="site-link" href="/learn/">
+            {' '}
+            Học theo cấp độ{' '}
+          </a>
+          <ThemeToggle />
+        </div>
+      </header>
+      <TypingTrainer client:load />
+    </main>
+  </body>
+</html>
