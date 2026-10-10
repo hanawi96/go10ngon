@@ -2,7 +2,11 @@
   import { onMount, tick } from 'svelte';
 
   import TypingText from './TypingText.svelte';
+  import TypingSettings from './TypingSettings.svelte';
   import VirtualKeyboard from './VirtualKeyboard.svelte';
+
+  import { hydrateTypingSettings, subscribeTypingSettings } from './typing-settings';
+  import { playCommittedTypingSound } from './typing-sound';
 
   import { LEARNING_LESSONS } from './learning-lessons';
   import { isTypingTextComplete, limitTypingText, splitGraphemes } from './typing-engine';
@@ -12,6 +16,7 @@
 
   let currentIndex = $state(0);
   let focusMode = $state(false);
+  let showKeyboard = $state(true);
   let typedText = $state('');
   let completedIds = $state<string[]>([]);
   let storageWarning = $state(false);
@@ -38,24 +43,33 @@
 
   // Khôi phục những bài đã hoàn thành.
   onMount(() => {
+    hydrateTypingSettings();
+    const stopSettings = subscribeTypingSettings((settings) => {
+      showKeyboard = settings.keyboard;
+    });
+
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (!saved) return;
+      if (saved) {
+        const parsed: unknown = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const validIds = parsed.filter(
+            (id): id is string =>
+              typeof id === 'string' && LEARNING_LESSONS.some((lesson) => lesson.id === id),
+          );
 
-      const parsed: unknown = JSON.parse(saved);
-      if (!Array.isArray(parsed)) return;
-
-      const validIds = parsed.filter(
-        (id): id is string =>
-          typeof id === 'string' && LEARNING_LESSONS.some((lesson) => lesson.id === id),
-      );
-
-      completedIds = [...new Set(validIds)];
+          completedIds = [...new Set(validIds)];
+        }
+      }
     } catch {
       storageWarning = true;
     }
 
     inputElement?.focus();
+
+    return () => {
+      stopSettings();
+    };
   });
 
   function markLessonComplete() {
@@ -77,8 +91,8 @@
     // Giới hạn theo ký tự Unicode hoàn chỉnh.
     const nextText = limitTypingText(value, expectedChars.length);
 
-    // Chỉ cập nhật trạng thái khi nội dung thực sự thay đổi.
     if (nextText !== typedText) {
+      playCommittedTypingSound(typedText, nextText, currentLesson.text);
       typedText = nextText;
     }
 
@@ -158,6 +172,8 @@
       {focusMode ? 'Thoát chế độ tập trung' : 'Bật chế độ tập trung'}
     </button>
 
+    <TypingSettings suspended={focusMode} />
+
     {#if focusMode}
       <span class="focus-hint">Nhấn Esc để thoát.</span>
     {/if}
@@ -236,7 +252,7 @@
         autocapitalize="off"></textarea>
     </div>
 
-    {#if !focusMode}
+    {#if showKeyboard && !focusMode}
       <VirtualKeyboard {nextCharacter} />
     {/if}
 

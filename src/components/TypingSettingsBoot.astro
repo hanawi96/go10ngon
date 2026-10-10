@@ -1,0 +1,31 @@
+<!--
+  Chạy trước khi vẽ trang.
+  Khóa và giá trị phải khớp typing-settings.ts.
+-->
+<script is:inline>
+  (function () {
+    try {
+      const raw = localStorage.getItem('go10ngon:typing-settings:v1');
+      if (!raw) return;
+
+      const saved = JSON.parse(raw);
+      if (!saved || typeof saved !== 'object') return;
+
+      const root = document.documentElement;
+
+      if (saved.font === 'system' || saved.font === 'mono') {
+        root.dataset.typingFont = saved.font;
+      }
+
+      if (saved.fontSize === 'sm' || saved.fontSize === 'md' || saved.fontSize === 'lg') {
+        root.dataset.typingSize = saved.fontSize;
+      }
+
+      if (saved.keyboard === false) {
+        root.dataset.typingKeyboard = 'off';
+      }
+    } catch {
+      // Không đọc được thì giữ cài đặt mặc định.
+    }
+  })();
+</script>

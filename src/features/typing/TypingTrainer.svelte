@@ -2,8 +2,11 @@
   import { onMount, tick } from 'svelte';
   import TypingText from './TypingText.svelte';
   import TypingHistory from './TypingHistory.svelte';
+  import TypingSettings from './TypingSettings.svelte';
 
   import { MAX_RESULTS, loadTypingHistory, saveTypingHistory, type TypingResult } from './storage';
+  import { hydrateTypingSettings, subscribeTypingSettings } from './typing-settings';
+  import { playCommittedTypingSound } from './typing-sound';
   import VirtualKeyboard from './VirtualKeyboard.svelte';
 
   import { normalizeTypingText, splitGraphemes } from './typing-engine';
@@ -30,6 +33,7 @@
   let status = $state<Status>('idle');
   // Chế độ luyện gõ tập trung
   let focusMode = $state(false);
+  let showKeyboard = $state(true);
   let history = $state<TypingResult[]>([]);
   let storageWarning = $state(false);
 
@@ -131,6 +135,7 @@
   function updateTyping(value: string) {
     if (status === 'finished') return;
 
+    const expected = sampleText;
     const normalized = normalizeTypingText(value);
     const inputChars = splitGraphemes(normalized);
 
@@ -151,6 +156,10 @@
     if (updateClock()) {
       inputElement.value = typedText;
       return;
+    }
+
+    if (nextText !== typedText) {
+      playCommittedTypingSound(typedText, nextText, expected);
     }
 
     typedText = nextText;
@@ -274,12 +283,18 @@
   }
 
   onMount(() => {
+    hydrateTypingSettings();
+    const stopSettings = subscribeTypingSettings((settings) => {
+      showKeyboard = settings.keyboard;
+    });
+
     history = loadTypingHistory();
     inputElement?.focus();
     window.addEventListener('focus', updateClock);
     document.addEventListener('visibilitychange', updateClock);
 
     return () => {
+      stopSettings();
       stopTimer();
       window.removeEventListener('focus', updateClock);
       document.removeEventListener('visibilitychange', updateClock);
@@ -296,6 +311,8 @@
     <button type="button" class="focus-toggle" aria-pressed={focusMode} onclick={toggleFocusMode}>
       {focusMode ? 'Thoát chế độ tập trung' : 'Bật chế độ tập trung'}
     </button>
+
+    <TypingSettings suspended={focusMode} />
 
     {#if focusMode}
       <span class="focus-hint">Nhấn Esc để thoát.</span>
@@ -386,7 +403,7 @@
   </div>
 
   <!-- Bàn phím ảo hướng dẫn gõ 10 ngón -->
-  {#if !focusMode}
+  {#if showKeyboard && !focusMode}
     <VirtualKeyboard {nextCharacter} />
   {/if}
 

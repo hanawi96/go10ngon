@@ -78,6 +78,23 @@
       observer.disconnect();
     };
   });
+
+  // Đổi font hoặc cỡ chữ không đổi text, nên phải đo lại con trỏ.
+  $effect(() => {
+    const root = document.documentElement;
+    const observer = new MutationObserver(() => {
+      placeCaret();
+    });
+
+    observer.observe(root, {
+      attributes: true,
+      attributeFilter: ['data-typing-font', 'data-typing-size'],
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  });
 </script>
 
 <div class="typing-text" bind:this={textElement}>
@@ -99,7 +116,8 @@
 <style>
   .typing-text {
     position: relative;
-    font-size: clamp(22px, 3vw, 30px);
+    font-family: var(--typing-font-family);
+    font-size: var(--typing-font-size);
     line-height: 1.9;
     letter-spacing: 0.3px;
 
