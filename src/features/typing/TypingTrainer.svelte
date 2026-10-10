@@ -40,6 +40,8 @@ const LOAD_AHEAD = 50;
   let typedText = $state('');
   let elapsedMs = $state(0);
   let status = $state<Status>('idle');
+    // Chế độ luyện gõ tập trung
+let focusMode = $state(false);
     let history = $state<TypingResult[]>([]);
 let storageWarning = $state(false);
 
@@ -212,6 +214,29 @@ function finishTyping() {
     updateTyping(target.value);
   }
 
+  async function toggleFocusMode() {
+  focusMode = !focusMode;
+
+  await tick();
+
+  // Tự động đưa con trỏ vào ô nhận phím.
+  if (status !== 'finished') {
+    inputElement?.focus();
+  }
+}
+
+function handleFocusKeydown(event: KeyboardEvent) {
+  // Nhấn Esc để thoát Focus Mode.
+  // Không can thiệp khi bộ gõ tiếng Việt đang xử lý IME.
+  if (
+    event.key === 'Escape' &&
+    focusMode &&
+    !isComposing
+  ) {
+    focusMode = false;
+  }
+}
+
   async function resetTyping() {
     stopTimer();
     continuationCount = 0;
@@ -289,12 +314,29 @@ function finishTyping() {
   });
 </script>
 
-<section class="trainer">
+<section class="trainer" class:focus-mode={focusMode}>
   <header class="trainer-header">
     <h2>Luyện gõ 10 ngón</h2>
     <p>Chọn bài luyện và thời gian phù hợp để bắt đầu.</p>
   </header>
+<div class="focus-controls">
+  <button
+    type="button"
+    class="focus-toggle"
+    aria-pressed={focusMode}
+    onclick={toggleFocusMode}
+  >
+    {focusMode
+      ? 'Thoát chế độ tập trung'
+      : 'Bật chế độ tập trung'}
+  </button>
 
+  {#if focusMode}
+    <span class="focus-hint">
+      Nhấp vào đoạn văn để gõ. Nhấn Esc để thoát.
+    </span>
+  {/if}
+</div>
   <!-- Lựa chọn ngôn ngữ và bài luyện -->
   <div class="settings">
     <div class="field">
@@ -364,13 +406,23 @@ function finishTyping() {
   <!-- Văn bản luyện gõ -->
 <div class="text-box">
   <TypingText text={sampleText} typed={typedText} />
+
+  {#if focusMode}
+    <label for="typing-input" class="focus-target">
+      <span class="visually-hidden">
+        Nhấp vào văn bản để bắt đầu gõ
+      </span>
+    </label>
+  {/if}
 </div>
 
 <!-- Bàn phím ảo hướng dẫn gõ 10 ngón -->
-<VirtualKeyboard nextCharacter={nextCharacter} />
+{#if !focusMode}
+  <VirtualKeyboard nextCharacter={nextCharacter} />
+{/if}
 
   <!-- Ô nhập văn bản -->
-  <div class="input-section">
+<div class="input-section" class:focus-hidden={focusMode}>
     <label for="typing-input">Nhập văn bản tại đây</label>
 
     <textarea
@@ -379,6 +431,7 @@ function finishTyping() {
       rows="3"
       value={typedText}
       oninput={handleInput}
+      onkeydown={handleFocusKeydown}
       oncompositionstart={handleCompositionStart}
       oncompositionend={handleCompositionEnd}
       onpaste={(event) => event.preventDefault()}
@@ -421,12 +474,14 @@ function finishTyping() {
   </p>
 {/if}
 
-<TypingHistory
-  results={history}
-  lessonId={selectedLessonId}
-  durationSeconds={selectedDuration}
-  onClear={clearHistory}
-/>
+{#if !focusMode}
+  <TypingHistory
+    results={history}
+    lessonId={selectedLessonId}
+    durationSeconds={selectedDuration}
+    onClear={clearHistory}
+  />
+{/if}
 </section>
 
 <style>
@@ -648,4 +703,94 @@ function finishTyping() {
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
 }
+
+
+/* =======================================
+   FOCUS MODE
+======================================= */
+
+.trainer {
+  position: relative;
+}
+
+.focus-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.focus-toggle {
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+}
+
+.focus-toggle:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.focus-toggle[aria-pressed='true'] {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.focus-hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.text-box {
+  display: block;
+  cursor: text;
+}
+
+.trainer.focus-mode .settings,
+.trainer.focus-mode .duration-picker {
+  display: none;
+}
+
+.trainer.focus-mode .text-box {
+  min-height: 170px;
+  border-color: var(--color-primary);
+  transition: border-color var(--transition-fast);
+}
+
+/* Ẩn về thị giác nhưng giữ textarea có thể focus. */
+.input-section.focus-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
+  border: 0;
+}
+
+
+.text-box {
+  position: relative;
+}
+
+.focus-target {
+  position: absolute;
+  inset: 0;
+  cursor: text;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 </style>

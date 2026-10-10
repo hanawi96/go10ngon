@@ -1,0 +1,62 @@
+---
+import LearningTrainer from '../features/typing/LearningTrainer.svelte';
+import '../styles/global.css';
+---
+
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Học gõ 10 ngón từ cơ bản - Go10Ngon</title>
+
+    <meta
+      name="description"
+      content="Học gõ 10 ngón miễn phí theo từng cấp độ, từ hàng phím cơ sở đến luyện gõ tiếng Việt và tiếng Anh."
+    />
+  </head>
+
+  <body>
+    <main>
+      <nav class="page-navigation" aria-label="Điều hướng">
+        <a href="/">← Quay lại kiểm tra tốc độ</a>
+      </nav>
+
+      <h1>Học gõ 10 ngón</h1>
+
+      <p class="intro">
+        Luyện từng hàng phím, từng ngón tay và từng cấp độ.
+        Bắt đầu từ những bài học đơn giản nhất.
+      </p>
+
+      <LearningTrainer client:load />
+    </main>
+  </body>
+</html>
+
+<style>
+  .page-navigation {
+    margin-bottom: var(--space-5);
+  }
+
+  .page-navigation a {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-size: var(--font-size-sm);
+  }
+
+  .page-navigation a:hover {
+    text-decoration: underline;
+  }
+
+  .page-navigation a:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 4px;
+  }
+
+  .intro {
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-5);
+  }
+</style>
