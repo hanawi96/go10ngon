@@ -28,12 +28,9 @@
 
   let textElement = $state<HTMLDivElement>();
   let caretElement = $state<HTMLSpanElement>();
-  let placed = false;
-  let lastWindow = -1;
 
-  // Một con trỏ duy nhất trượt tới ký tự kế tiếp.
-  // Đổi trang văn bản hoặc đổi cỡ khung thì đặt thẳng, không trượt xuyên màn hình.
-  function placeCaret(forceSnap = false) {
+  // Đặt thẳng vào ký tự đang gõ. Không trượt, để con trỏ luôn khớp chữ.
+  function placeCaret() {
     const root = textElement;
     const caret = caretElement;
     if (!root || !caret) return;
@@ -54,22 +51,9 @@
     const x = active ? targetRect.left - rootRect.left - 1 : targetRect.right - rootRect.left;
     const y = targetRect.top - rootRect.top + CARET_INSET;
     const height = Math.max(2, targetRect.height - CARET_INSET * 2);
-    const snap = forceSnap || !placed || lastWindow !== visibleStart;
-
-    lastWindow = visibleStart;
-    placed = true;
-
-    if (snap) {
-      caret.style.transition = 'none';
-    }
 
     caret.style.height = `${height}px`;
     caret.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-
-    if (snap) {
-      void caret.offsetWidth;
-      caret.style.transition = '';
-    }
   }
 
   $effect(() => {
@@ -145,10 +129,6 @@
     pointer-events: none;
     background: var(--color-primary);
     border-radius: var(--radius-full);
-
-    /* Ease-out riêng cho con trỏ: rời ký tự ngay rồi trượt tới chỗ mới.
-       Token chuyển động chung bắt đầu chậm, con trỏ sẽ trễ so với phím. */
-    transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
     animation: typing-caret-blink 1s step-end infinite;
   }
 
