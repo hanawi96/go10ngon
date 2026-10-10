@@ -1,33 +1,232 @@
+/* =========================================
+   GO10NGON - DESIGN SYSTEM
+   Version: 1.0
+========================================= */
+
 :root {
-  font-family:
-    system-ui,
-    -apple-system,
-    sans-serif;
-  color: #f1f5f9;
-  background: #0f172a;
+  color-scheme: dark;
+
+  /* =======================================
+     1. BRAND COLORS
+     Đổi màu thương hiệu tại đây
+  ======================================= */
+
+  --brand-primary: #a78bfa;
+  --brand-on-primary: #082f49;
+
+  /* Màu tương tác tự động theo thương hiệu */
+
+  --color-primary: var(--brand-primary);
+  --color-primary-hover: color-mix(
+    in srgb,
+    var(--brand-primary),
+    white 12%
+  );
+
+  --color-primary-soft: color-mix(
+    in srgb,
+    var(--brand-primary) 12%,
+    transparent
+  );
+
+  --color-focus-ring: color-mix(
+    in srgb,
+    var(--brand-primary) 30%,
+    transparent
+  );
+
+  /* =======================================
+     2. BACKGROUND COLORS
+  ======================================= */
+
+  --color-background: #0f172a;
+  --color-surface: #1e293b;
+  --color-surface-hover: #263549;
+
+  /* =======================================
+     3. TEXT COLORS
+  ======================================= */
+
+  --color-text: #f8fafc;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+
+  /* =======================================
+     4. BORDER COLORS
+  ======================================= */
+
+  --color-border: #334155;
+  --color-border-strong: #475569;
+
+  /* =======================================
+     5. STATUS COLORS
+  ======================================= */
+
+  --color-success: #4ade80;
+  --color-error: #f87171;
+
+  --color-success-soft: color-mix(
+    in srgb,
+    var(--color-success) 10%,
+    transparent
+  );
+
+  --color-error-soft: color-mix(
+    in srgb,
+    var(--color-error) 15%,
+    transparent
+  );
+
+  /* =======================================
+     6. TYPOGRAPHY
+  ======================================= */
+
+  --font-family: system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 24px;
+
+  /* =======================================
+     7. SPACING SYSTEM
+  ======================================= */
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 40px;
+
+  /* =======================================
+     8. BORDER RADIUS
+  ======================================= */
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* =======================================
+     9. ANIMATION
+  ======================================= */
+
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+
+/* =======================================
+   KEYBOARD FINGER COLORS
+======================================= */
+
+--finger-pinky: #fb7185;
+--finger-ring: #fbbf24;
+--finger-middle: #a3e635;
+--finger-index: #60a5fa;
+--finger-thumb: #c084fc;
+
 }
 
-* {
+/* =========================================
+   GLOBAL RESET
+========================================= */
+
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  padding: var(--space-5);
+
   display: grid;
   place-items: center;
+
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+
+  background: var(--color-background);
+  color: var(--color-text);
+
+  -webkit-font-smoothing: antialiased;
 }
 
 main {
-  width: min(90%, 720px);
+  width: min(100%, 800px);
 }
 
+h1 {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.3;
+}
+
+p {
+  line-height: 1.6;
+}
+
+/* =========================================
+   BUTTONS
+========================================= */
+
 button {
-  padding: 12px 20px;
-  border: 0;
-  border-radius: 8px;
-  background: #38bdf8;
-  color: #082f49;
-  font: inherit;
+  padding: var(--space-3) var(--space-5);
+
+  border: none;
+  border-radius: var(--radius-md);
+
+  background: var(--color-primary);
+  color: var(--brand-on-primary);
+
+  font-family: inherit;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+
   cursor: pointer;
+
+  transition:
+    background var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+button:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* =========================================
+   ACCESSIBILITY
+========================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

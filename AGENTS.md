@@ -74,3 +74,28 @@ Sau mỗi nhiệm vụ, báo cáo:
 
 Code đơn giản, khoa học, dễ hiểu, dễ kiểm thử, dễ bảo trì.
 Không over-engineering.
+
+## 9. DESIGN SYSTEM - QUY TẮC BẮT BUỘC
+
+- Sử dụng **Vanilla CSS (CSS thuần)**, không tự ý thêm CSS Framework.
+- Toàn bộ màu sắc dùng chung phải được khai báo và quản lý tập trung tại `src/styles/global.css`.
+- Tất cả component phải sử dụng **CSS Variables** từ Design System để đảm bảo tính đồng bộ.
+- Không viết trực tiếp (hardcode) mã màu HEX, RGB hoặc HSL trong từng component.
+- Màu thương hiệu sử dụng biến `--color-primary`.
+- Màu nền sử dụng các biến `--color-background` và `--color-surface`.
+- Màu chữ sử dụng các biến `--color-text`, `--color-text-secondary` và `--color-text-muted`.
+- Màu trạng thái sử dụng `--color-success` cho trạng thái đúng/thành công và `--color-error` cho trạng thái sai/lỗi.
+- Các thuộc tính **border-radius, spacing và transition** phải ưu tiên sử dụng biến CSS chung đã được định nghĩa.
+- Không tạo thêm biến CSS trùng lặp nếu các biến hiện có đã đáp ứng được yêu cầu.
+- Không tự ý thay đổi bảng màu thương hiệu khi phát triển hoặc bổ sung tính năng mới.
+- Nếu cần bổ sung Design Token mới, phải khai báo tại `global.css` và giải thích rõ lý do.
+- CSS riêng của từng component phải được viết trong thẻ `<style>` của file `.svelte`, tận dụng cơ chế **Scoped CSS** của Svelte.
+- Không tự ý tạo file CSS riêng cho từng component nếu không thực sự cần thiết.
+- Không đưa CSS đặc thù của một component vào `global.css`.
+- Không cài đặt thêm thư viện UI nếu Vanilla CSS có thể đáp ứng tốt yêu cầu.
+- Đảm bảo độ tương phản giữa màu chữ và màu nền, giúp nội dung dễ đọc.
+- Các trạng thái **hover, focus, active và disabled** phải có thiết kế đồng bộ, rõ ràng và dễ nhận biết.
+- Ưu tiên giao diện tối giản, hiện đại, nhất quán, dễ sử dụng và không gây mất tập trung khi luyện gõ.
+- Khi chỉnh sửa giao diện, phải tái sử dụng các Design Token đã có, tránh tạo những quy tắc CSS không cần thiết.
+
+**Mục tiêu:** Xây dựng một hệ thống giao diện thống nhất, dễ quản lý và bảo trì. Khi cần thay đổi màu sắc thương hiệu, chỉ cần chỉnh sửa các biến CSS tại `src/styles/global.css` để toàn bộ website tự động cập nhật mà không phải sửa từng component.
